@@ -1,13 +1,13 @@
 # include "reco_factory.h"
 
-//TODO: ai costruttori vanno passati gli argomenti
+//TODO: capire se passare tpoints come const reference o no!!
 std::unique_ptr<ReconstructionBase> reconstructionFactory(const std::string& id, const NumericMatrix& Y, 
-                                                          Numeric alpha, Integer K = 0, const NumericVector& tpoints = NumericVector(0),
-                                                          Integer nRegGrid = 0, Integer maxBins = 0) {
+                                                          double alpha = 0.0, int K = 0, NumericVector& tpoints = NumericVector(),
+                                                          int nRegGrid = 0, int maxBins = 0) {
     if (id == "Kraus") {
-        return std::make_unique<ReconstructionKraus>(Y, alpha, K, tpoints);
+        return std::make_unique<ReconstructionKraus>(Y, alpha, K, tpoints, nRegGrid, maxBins);
     } else if (id == "KLAl") {
-        return std::make_unique<ReconstructionKLAl>(Y, alpha, K, tpoints);
+        return std::make_unique<ReconstructionKLAl>(Y, alpha, K, tpoints, nRegGrid, maxBins);
     } else {
         return nullptr
     }

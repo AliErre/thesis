@@ -6,7 +6,7 @@
 #include <string>
 
 std::unique_ptr<ReconstructionBase> reconstructionFactory(const std::string&, const NumericMatrix&, 
-                                                          const Numeric, const Integer, const NumericVector&,
-                                                          const Integer, const Integer);
+                                                          double, int, NumericVector&,
+                                                          int, int);
 
 #endif // RECONSTRUCTIONFACTORY_H
