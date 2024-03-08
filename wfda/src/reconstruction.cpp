@@ -1,7 +1,8 @@
 #include "reconstruction.h"
 #include <algorithm>
 
-std::vector<int> find_obs_inc(const NumericMatrix& Y) const{
+std::vector<int> find_obs_inc(const NumericMatrix& Y) const{//forse questo non metterlo come membro della classe ma FREE FUNCTION
+//se lo metto come free function potrei chiamarlo a prescindere dall'avere un oggetto della classe
   int n = Y.ncol(); 
   std::vector<int> reconst_fcts; //initialized empty
   reconst_fcts.reserve(n); //reserve memory -> makes push_back better
@@ -29,37 +30,66 @@ IntegerVector reconst_fcts() const{
 }
 
 
-const std::vector<double>& meanKraus(const NumericMatrix& X_mat) {//oppure farla void?
-  int nRows = X_mat.nrow();
-  int nCols = X_mat.ncol();
-  std::vector<double> rowMeans(nRows);
+const std::vector<double>& meanKraus() {
 
-  for (int i = 0; i < nRows; ++i) {
-    double sum = 0;
-    int naCount = 0;
-    // Obtain iterators to the beginning and end of the current row
-    NumericMatrix::ConstRow row = X_mat(i, _);
-    for (auto it = row.begin(); it != row.end(); ++it) {
-      if (NumericVector::is_na(*it)) {
-        naCount++;
-      } else {
-        sum += *it;
-      }
+  int nRows = m_Y.row();
+  int nCols = m_Y.col();
+  m_mean.resize(nRows);
+    for (int i = 0; i < nRows; ++i) {
+        double sum = 0;
+        int naCount = 0;
+
+        NumericMatrix::ConstRow row = X_mat(i, _); //::COnstRow gives constant reference to the current row
+        // Iterate over the elements of the row
+        for (auto it = row.begin(); it != row.end(); ++it) {
+            if (NumericVector::is_na(*it)) {
+                naCount++;
+            } else {
+                sum += *it;
+            }
+        }
+        
+        m_mean[i] = naCount < nCols ? sum / (nCols - naCount) : NA_REAL;
     }
-    // Calculate mean if there are non-NA values, else NA
-    rowMeans[i] = naCount < nCols ? sum / (nCols - naCount) : NA_REAL;
-  }
-  m_mean = rowMeans
-  return m_mean
+
+    return m_mean;
 }
 
-//getter
-NumericMatrix cov() const {//since there's no wrap() to go from std::vector<std::vector<double>> to NumericMatrix
-    NumericMatrix Cov(m_cov.size(), m_cov[0].size());
-    for (int i = 0; i < m_cov.size(); ++i) {
-        for (int j = 0; j < m_cov[0].size(); ++j) {
-            Cov(i, j) = m_cov[i][j];
+const NumericMatrix& covKraus(){
+  int nRows = m_Y.row();
+  int nCols = m_Y.col();
+
+  std::vector<double> rowMeans = m_mean.empty() ? meanKraus(m_Y) : m_mean;
+  NumericMatrix X_cent_mat(nRows, nCols);//fixed dimensions 
+
+    for (int i = 0; i < nRows; ++i) {
+        for (int j = 0; j < nCols; ++j) {
+            X_cent_mat(i, j) = NumericVector::is_na(m_Y(i, j)) ? NA_REAL : m_Y(i, j) - rowMeans[i];//ricontrolla
         }
     }
-    return Cov; 
+    
+    //account for NAs
+    m_cov = NumericMatrix(nRows, nRows);
+    for (int s = 0; s < nRows; ++s) {
+        for (int t = s; t < nRows; ++t) {
+            double sum = 0.0;
+            int count = 0;
+            for (int k = 0; k < nCols; ++k) {
+                if (!NumericVector::is_na(X_cent_mat(s, k)) && !NumericVector::is_na(X_cent_mat(t, k))) {
+                    sum += X_cent_mat(s, k) * X_cent_mat(t, k);
+                    ++count;
+                }
+            }
+            double covValue = count > 0 ? sum / count : NA_REAL;
+            m_cov(s, t) = covValue;
+            m_cov(t, s) = covValue; //symmetric
+        }
+    }
+    
+  return m_cov;
 }
+
+double gcvKraus(const std::vector<std::vector<double>>& covMat, const std::vector<double>& meanVec, 
+                        const NumericMatrix& X, const bool M_bool_vec, const Numeric& alpha) const{
+
+                        }

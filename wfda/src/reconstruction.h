@@ -9,6 +9,8 @@ using namespace Rcpp;
 //       controllare K (KLAl) di che tipo dev'essere e decidere un default
 // in R, reconstKraus_fun ritorna una lista. Cosa ritornare in C++? tupla?
 // aggiungere i parametri di KLNoAl
+// forse devo aggiungere come argument reconst_fcts se voglio dare la possibilità
+// di dire in ingresso che curve ricostruire
 
 // con Rcpp non esiste variadic templates, se voglio usare la factory non posso passare diversi numeri di parametri
 // quando derived class non ha quel parametro (ex: Kraus non ha K) passarlo come NA
@@ -16,15 +18,15 @@ using namespace Rcpp;
 class ReconstructionBase {
     public:
     //nota: references point the memory area of the R object!!
-        ReconstructionBase(const NumericMatrix& Y, double alpha = 0.0, 
-                           int K = 0, NumericVector& t_points = NumericVector(),
-                           int nRegGrid = 0, int maxBins = 0) 
+        ReconstructionBase(const NumericMatrix& Y, double alpha, 
+                           int K, const NumericVector& t_points,
+                           int nRegGrid, int maxBins) 
                           : m_Y(Y), m_alpha(alpha), m_K(K), m_t_points(t_points), m_nRegGrid(nRegGrid), m_maxBins(maxBins)
-                          { m_reconst_fcts = find_obs_inc(Y);}  //constructor
+                          { m_reconst_fcts = find_obs_inc(Y);}
 
         // specialize
         virtual ~ReconstructionBase() = default; // polymorphism => need virtual destructor
-        virtual void reconstructCurves() = 0; // override in derived classes
+        virtual void reconstructCurves() = 0; 
         virtual Numeric alpha() const = 0;
         virtual Integer K() const = 0;
         virtual NumericVector t_points() const = 0;
@@ -32,7 +34,7 @@ class ReconstructionBase {
         virtual Integer n_reg_grid() const = 0;
 
         // same for all derived
-        std::vector<int> find_obs_inc(const NumericMatrix& Y) const; //Rcpp will deal with return type
+        std::vector<int> find_obs_inc(const NumericMatrix&) const;
         IntegerVector reconst_fcts() const;//getter
 
     protected:
@@ -49,24 +51,26 @@ class ReconstructionBase {
 class ReconstructionKraus : public ReconstructionBase{
     public:
         //constructor for Kraus
-        ReconstructionKraus(const NumericMatrix& Y, double alpha, int K, 
-                            NumericVector& t_points, int nRegGrid, int maxBins) : 
-                            ReconstructionBase(Y, alpha, K, t_points, nRegGrid, maxBins) //per unique_ptr
+        ReconstructionKraus(const NumericMatrix& Y, double alpha = 0.0, int K = 0, 
+                            const NumericVector& t_points = NumericVector::create(), int nRegGrid = 0, int maxBins = 0) : 
+                            ReconstructionBase(Y, alpha, K, t_points, nRegGrid, maxBins)
+                            {meanKraus(); covKraus();}
+
         void reconstructCurves() override;//metodo che sarà chiamato da R
 
-        const std::vector<double>& meanKraus(const NumericMatrix&);//oppure return void?
-        const std::vector<std::vector<double>>& covKraus(const NumericMatrix&); //oppure return void?
+        const std::vector<double>& meanKraus();
+        const NumericMatrix& covKraus();
         
 
         // getter e setter mean e cov
-        NumericVector mean() const { return wrap(m_mean); } //returns value computed by meanKraus
-        NumericMatrix cov() const; //returns value computed by covKraus
+        NumericVector mean() const { return wrap(m_mean); } //beware wrap() copies the object -> heavy when data is big
+        NumericMatrix cov() const {return m_cov;} //returns value computed by covKraus
 
-        double gcvKraus(const std::vector<std::vector<double>>& covMat, const std::vector<double>& meanVec, 
-                        const NumericMatrix& X, const bool M_bool_vec, const Numeric& alpha) const;
-        TUPLA reconstKraus_fun(const std::vector<std::vector<double>>& covMat, 
+        double gcvKraus(const std::vector<std::vector<double>>&, const std::vector<double>&, 
+                        const NumericMatrix&, const bool M_bool_vec, const Numeric&) const;
+        /*TUPLA reconstKraus_fun(const std::vector<std::vector<double>>& covMat, 
                                const std::vector<double>& X_cent_vec, 
-                               const Numeric& alpha); //ritorna una lista => how to deal?
+                               const Numeric& alpha); //ritorna una lista => how to deal?*/
 
         //override
         double alpha() const override {return m_alpha; }
@@ -77,14 +81,14 @@ class ReconstructionKraus : public ReconstructionBase{
 
     private:
         std::vector<double> m_mean; // set to NA default? capire se mettere return type NumericVector
-        std::vector<std::vector<double>> m_cov; //default? return type NumericMatrix?
+        NumericMatrix m_cov; //return type NumericMatrix cause it can contain NA
 
 };
 
 class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un double o un int in R
     public: 
         ReconstructionKLAl(const NumericMatrix& Y, double alpha = 0.0, int K = 0, 
-                           NumericVector& t_points = NumericVector(), int nRegGrid = 0, int maxBins = 0) : 
+                           const NumericVector& t_points = NumericVector::create(), int nRegGrid = 0, int maxBins = 0) : 
                            ReconstructionBase(Y, alpha, K, t_points, nRegGrid, maxBins) //per unique_ptr
         void reconstructCurves() override;
 

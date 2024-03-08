@@ -2,7 +2,7 @@
 
 //TODO: capire se passare tpoints come const reference o no!!
 std::unique_ptr<ReconstructionBase> reconstructionFactory(const std::string& id, const NumericMatrix& Y, 
-                                                          double alpha = 0.0, int K = 0, NumericVector& tpoints = NumericVector(),
+                                                          double alpha = 0.0, int K = 0, NumericVector& tpoints = NumericVector::create(),
                                                           int nRegGrid = 0, int maxBins = 0) {
     if (id == "Kraus") {
         return std::make_unique<ReconstructionKraus>(Y, alpha, K, tpoints, nRegGrid, maxBins);
