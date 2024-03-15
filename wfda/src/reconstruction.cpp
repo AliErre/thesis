@@ -7,7 +7,7 @@
 //capire se mi serve la forward declaration di reconstKraus
 //destructor per gcv?
 
-std::vector<unsigned> ReconstructionBase::find_obs_inc(const NumericMatrix& Y) const{
+std::vector<int> ReconstructionBase::find_obs_inc(const NumericMatrix& Y) const{
 //forse questo non metterlo come membro della classe ma FREE FUNCTION
 //se lo metto come free function potrei chiamarlo a prescindere dall'avere un oggetto della classe
   int n = Y.ncol(); 
@@ -37,16 +37,16 @@ IntegerVector ReconstructionBase::reconst_fcts() const{
 }
 
 
-const NumericVector ReconstructionBase::meanRows() {
+const NumericVector& ReconstructionBase::meanRows() {
 
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
-  m_mean = NumericVector::create(nRows);
+  m_mean = NumericVector::create(nRows);//vedi se lasciarlo o no
     for (size_t i = 0; i < nRows; ++i) {
         double sum = 0;
         int naCount = 0;
 
-        NumericVector row = X_mat(i, _); //::ConstRow gives constant reference to the current row
+        NumericVector row = m_Y(i, _); //::ConstRow gives constant reference to the current row
         // Iterate over the elements of the row
         for (auto it = row.begin(); it != row.end(); ++it) {
             if (NumericVector::is_na(*it)) {
@@ -61,12 +61,11 @@ const NumericVector ReconstructionBase::meanRows() {
         //ci dovrebbe essere sempre almeno una curva completa*/
     }
 
-    return m_mean;
+    return m_mean;//retunr a reference to the data member
 }
 
 const NumericMatrix& ReconstructionBase::covMatrix(){
-//se voglio poter chiamarlo non su un oggetto di tipo reconstruction: farlo free function
-  if(m_mean.empty()){meanRows();}
+  //if(m_mean.length() == 0){meanRows();} not necessary
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
   NumericMatrix X_cent_mat(nRows, nCols);//fixed dimensions 
@@ -100,7 +99,7 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
 }
 
 
-List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_points, int nRegGrid, int maxBins, bool all){
+List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_points, int nRegGrid, int maxBins, bool all) const{
 //dovrei avere già mean_vec e cov_mat nella classe appena chiamo il costruttore
   int n = m_Y.ncol();
   IntegerVector reconst_fcts;
@@ -118,11 +117,11 @@ List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_
     X_reconst_mat(_,column) = m_Y(_,index);
     column++;
   }
-  NumericMatrix W_reconst_mat(r,n);//initialized filled with 0s
-  std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//posso fare così grazie a come sono salvate le NumericMatrix in memoria
+  NumericMatrix W_reconst_mat(r,reconst_fcts.length());//initialized filled with 0s
+  //std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//posso fare così grazie a come sono salvate le NumericMatrix in memoria
 
   std::vector<size_t> nonNA_fcts; //mask in R
-  nonNA_fcts.reserve(n);
+  nonNA_fcts.reserve(n);//metterlo come data member?
   //apply(X_mat,2,function(x)!any(is.na(x)))
   for(size_t i = 0; i < n; i++){
     //trasforma tutti i loop con size_t
@@ -132,45 +131,51 @@ List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_
   }
 
   NumericMatrix X_Compl_mat(r,nonNA_fcts.size());
-  double column = 0;
-  for(auto index&: nonNA_fcts){
+  int column = 0;
+  for(auto& index: nonNA_fcts){
     X_Compl_mat(_,column) = m_Y(_,index);
+    column++;
   }
 
-  std::vector<double> alpha_vec(reconst_fcts.size());
-  std::vector<double> df_vec(reconst_fcts.size());
+  NumericVector alpha_vec(reconst_fcts.size());
+  NumericVector df_vec(reconst_fcts.size());
   
-
+  int column = 0;
+  gcv GCV(X_Compl_mat, m_mean, m_cov);//vedere se poi chiamare destructor. Only created once
   for(auto& index:reconst_fcts){
-    int column = 0;
+
     LogicalVector M_bool = is_na(m_Y(_,index));
     LogicalVector O_bool = !M_bool;
-    gcv GCV(X_Compl_mat, m_mean, m_cov, index);//vedere se poi chiamare destructor
+    GCV.set_bool(M_bool);
+    
     //secondo me sarebbe meglio, anzichè creare ogni volta oggetto gcv, mettere un metodo che aggiorni l'indice index
-    if(alpha == R_NilValue)//R_NilValue = NULL in R
+    if(alpha == 0.0)//R_NilValue = NULL in R, in attesa di capire come gestire NULL, metto 0.0 di default
     {
       double max_bound = 0.0;
       for(size_t i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
         max_bound += m_cov(i,i);
       }
-      alpha_vec.push_back(optimize(gcv& GCV, std::numeric_limits<double>::epsilon(), max_bound, false)); //false -> minimization
+      alpha_vec.push_back(optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound, false, 1e-3)); //false -> minimization
     }else{
       alpha_vec.push_back(alpha);
     }
 
-    List resultKraus = reconstKraus_fun(m_Y, m_mean, m_cov, index, alpha_vec[i]);
+    List resultKraus = reconstKraus_fun(m_Y, m_mean, m_cov,index, alpha_vec[column]);//forse dovrei cambiarla e passargli M_bool
   //reconstKraus["X_cent_reconst_vec"] is an arma::vec
-    X_reconst_mat(_,column) = NumericVector(reconstKraus["X_cent_reconst_vec"].begin(), reconstKraus["X_cent_reconst_vec"].end()) + m_mean;
+    X_reconst_mat(_,column) = resultKraus["X_cent_reconst_vec"] + m_mean;
     df_vec.push_back(resultKraus["df"]);//check
     // W_reconst_mat[M_bool_vec,i]
     for(int i = 0; i < r;++i){
       if(M_bool[i])//gli altri pesi rimangono ad 1
-        W_reconst_mat(i,column) = 1 - NumericVector(resultKraus["hi"].begin(),resultKraus["hi"].end()); //arma::vec
+        W_reconst_mat(i,column) = 1 - resultKraus["hi"];
+      else
+        W_reconst_mat(i,column) = 1;
     }
     column++;
   }
-  return(List(_["X_reconst_mat"] = X_reconst_mat,
-              _["alpha"]         = alpha_vec, 
-              _["df"]            = df_vec,
-              _["W_reconst_mat"] = W_reconst_mat)); 
+  return(List::create(_["X_reconst_mat"] = X_reconst_mat,
+                      _["alpha"]         = alpha_vec, 
+                      _["df"]            = df_vec,
+                      _["W_reconst_mat"] = W_reconst_mat)); 
+
 }

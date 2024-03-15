@@ -15,10 +15,10 @@ class ReconstructionBase {
 
         // specialize
         virtual ~ReconstructionBase() = default; // polymorphism => need virtual destructor
-        virtual List reconstructCurve(unsigned,double,int,NumericVector,int,int) const = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
+        virtual List reconstructCurve(double, int, NumericVector, int, int, bool) const = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
 
         // same for all derived
-        std::vector<unsigned> find_obs_inc(const NumericMatrix&) const; //farne una free function?
+        std::vector<int> find_obs_inc(const NumericMatrix&) const; //farne una free function?
         IntegerVector reconst_fcts() const;//getter
         const NumericVector& meanRows(); //farne una free function?mettere return type NumericVector? penso sia meglio!!!
         const NumericMatrix& covMatrix(); //farne una free function?    
@@ -28,7 +28,7 @@ class ReconstructionBase {
 
     protected:
         NumericMatrix m_Y; // curves.train in R
-        std::vector<unsigned> m_reconst_fcts; //vector of indices of curves to reconstruct 
+        std::vector<int> m_reconst_fcts; //vector of indices of curves to reconstruct 
         NumericVector m_mean; //capire se mettere return type NumericVector
         NumericMatrix m_cov; //return type NumericMatrix cause it can contain NA
 };
@@ -39,19 +39,14 @@ class ReconstructionKraus : public ReconstructionBase{
         //constructor for Kraus
         ReconstructionKraus(const NumericMatrix& Y) : ReconstructionBase(Y) {};
 
-        double gcvKraus(const std::vector<std::vector<double>>&, const std::vector<double>&, 
-                        const NumericMatrix&, const bool M_bool_vec, const Numeric&) const;
-
         //override
-        List reconstructCurve(unsigned i, 
-                              double alpha = 0.0, int K = 0, NumericVector t_points = NumericVector::create(),
-                              int nRegGrid = 0, int maxBins = 0) override;//metodo che sarà chiamato da R
+        List reconstructCurve(double, int, NumericVector, int, int, bool) const override;//metodo che sarà chiamato da R
         
         //aggiungi data member per gcv?
 
 };
 
-class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un double o un int in R
+/*class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un double o un int in R
     public: 
         ReconstructionKLAl(const NumericMatrix& Y): 
                            ReconstructionBase(Y) {}; //per unique_ptr
@@ -61,6 +56,6 @@ class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un doubl
     private:
         NumericVector m_t_points = NumericVector::create(); // length(m_t_points) = nrow(curves.train) check type
 
-};
+};*/
 
 #endif RECONSTRUCTION_H

@@ -7,7 +7,7 @@ std::unique_ptr<ReconstructionBase> reconstructionFactory(const std::string& id,
     } else if (id == "KLAl") {
         return std::make_unique<ReconstructionKLAl>(Y);
     } else {
-        return nullptr
+        return nullptr;
     }
 }
 // usage example: recon_object <- reconstructionFactory("Kraus", matrix_data, 0.5, 10, t_points_vector)

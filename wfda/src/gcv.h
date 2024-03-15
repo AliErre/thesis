@@ -5,16 +5,17 @@
 
 class gcv : public Optim{
     public:
-        gcv(NumericMatrix& Y, NumericVector& mean_vec,
-            NumericMatrix& cov_mat,unsigned index) :
-            m_YY(Y), m_cov_gcv(cov_mat), m_mean_gcv(mean_vec), m_index(index) {};
+        gcv(const NumericMatrix Y,const NumericVector& mean_vec,
+            const NumericMatrix& cov_mat) :
+            m_YY(Y), m_cov_gcv(cov_mat), m_mean_gcv(mean_vec){};
         double value(double x) override;
+        void set_bool(const LogicalVector& m){ m_M_bool = m;};
     private:
         NumericMatrix m_YY;//X_compl_mat
         NumericVector m_mean_gcv;//m_mean
         NumericMatrix m_cov_gcv;//m_cov
         LogicalVector m_M_bool;
-        unsigned m_index;       
+        int m_index;       
 
 };
 
