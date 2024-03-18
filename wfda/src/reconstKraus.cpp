@@ -1,8 +1,11 @@
-#include "reconstKraus.h"
+#include <RcppArmadillo.h>
+// [[Rcpp::depends(RcppArmadillo)]]
+using namespace Rcpp;
+//#include "reconstKraus.h"
 //reconstructs the curve at index
+// [[Rcpp::export]]
 List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
                       const NumericMatrix& cov_mat,unsigned index, double alpha) {
-  //index = reconst_fcts[i], o in gcv è un'altra cosa
 
   arma::mat cov_mat_arma = as<arma::mat>(cov_mat);
   NumericVector X_cent_vec = Y(_,index) - mean_vec;//difference between NA and number is still NA, no need to take precautions
@@ -50,6 +53,8 @@ List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
   else{
     hi_scaled = hi/arma::sqrt(arma::diagvec(covMM_mat));   
   }
+
+  for(auto& elem:hi_scaled){Rcout<<"hi_scaled: "<<elem<<std::endl;}
 
   return List::create(Named("X_cent_reconst_vec") = NumericVector(X_cent_reconst_vec.begin(), X_cent_reconst_vec.end()), //arma::vec
                       Named("df") = df,//double

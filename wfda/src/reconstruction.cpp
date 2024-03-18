@@ -3,7 +3,7 @@
 #include <numeric>
 #include <limits>
 #include "gcv.h"
-#include "reconstKraus.h"
+
 //capire se mi serve la forward declaration di reconstKraus
 //destructor per gcv?
 
@@ -41,8 +41,8 @@ const NumericVector& ReconstructionBase::meanRows() {
 
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
-  m_mean = NumericVector::create(nRows);//vedi se lasciarlo o no
-    for (size_t i = 0; i < nRows; ++i) {
+  m_mean = NumericVector(nRows);//vedi se lasciarlo o no
+    for (int i = 0; i < nRows; ++i) {
         double sum = 0;
         int naCount = 0;
 
@@ -99,7 +99,7 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
 }
 
 
-List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_points, int nRegGrid, int maxBins, bool all) const{
+List ReconstructionKraus::reconstructCurve(double alpha, bool all) const{
 //dovrei avere già mean_vec e cov_mat nella classe appena chiamo il costruttore
   int n = m_Y.ncol();
   IntegerVector reconst_fcts;
@@ -120,10 +120,10 @@ List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_
   NumericMatrix W_reconst_mat(r,reconst_fcts.length());//initialized filled with 0s
   //std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//posso fare così grazie a come sono salvate le NumericMatrix in memoria
 
-  std::vector<size_t> nonNA_fcts; //mask in R
+  std::vector<int> nonNA_fcts; //mask in R
   nonNA_fcts.reserve(n);//metterlo come data member?
   //apply(X_mat,2,function(x)!any(is.na(x)))
-  for(size_t i = 0; i < n; i++){
+  for(int i = 0; i < n; i++){
     //trasforma tutti i loop con size_t
     NumericVector col = m_Y(_, i);
     if(is_false(any(is_na(col))))
@@ -131,7 +131,7 @@ List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_
   }
 
   NumericMatrix X_Compl_mat(r,nonNA_fcts.size());
-  int column = 0;
+  column = 0;
   for(auto& index: nonNA_fcts){
     X_Compl_mat(_,column) = m_Y(_,index);
     column++;
@@ -140,34 +140,36 @@ List ReconstructionKraus::reconstructCurve(double alpha, int K, NumericVector t_
   NumericVector alpha_vec(reconst_fcts.size());
   NumericVector df_vec(reconst_fcts.size());
   
-  int column = 0;
+  column = 0;
   gcv GCV(X_Compl_mat, m_mean, m_cov);//vedere se poi chiamare destructor. Only created once
+  
   for(auto& index:reconst_fcts){
 
     LogicalVector M_bool = is_na(m_Y(_,index));
     LogicalVector O_bool = !M_bool;
     GCV.set_bool(M_bool);
     
-    //secondo me sarebbe meglio, anzichè creare ogni volta oggetto gcv, mettere un metodo che aggiorni l'indice index
     if(alpha == 0.0)//R_NilValue = NULL in R, in attesa di capire come gestire NULL, metto 0.0 di default
     {
       double max_bound = 0.0;
-      for(size_t i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
+      for(int i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
         max_bound += m_cov(i,i);
       }
-      alpha_vec.push_back(optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound, false, 1e-3)); //false -> minimization
+      alpha_vec[column] = optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound, false, 1e-3); //false -> minimization
     }else{
-      alpha_vec.push_back(alpha);
+      alpha_vec[column] = alpha;
     }
 
     List resultKraus = reconstKraus_fun(m_Y, m_mean, m_cov,index, alpha_vec[column]);//forse dovrei cambiarla e passargli M_bool
   //reconstKraus["X_cent_reconst_vec"] is an arma::vec
-    X_reconst_mat(_,column) = resultKraus["X_cent_reconst_vec"] + m_mean;
+    NumericVector X_reconst = resultKraus["X_cent_reconst_vec"];
+    X_reconst_mat(_,column) = X_reconst + m_mean;
     df_vec.push_back(resultKraus["df"]);//check
     // W_reconst_mat[M_bool_vec,i]
-    for(int i = 0; i < r;++i){
+    NumericVector hi = resultKraus["hi"];
+    for(int i = 0; i < r;i++){
       if(M_bool[i])//gli altri pesi rimangono ad 1
-        W_reconst_mat(i,column) = 1 - resultKraus["hi"];
+        W_reconst_mat(i,column) = 1 - hi[i-hi.length()-1];//controlla hi[] che sia giusto
       else
         W_reconst_mat(i,column) = 1;
     }

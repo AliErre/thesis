@@ -121,7 +121,7 @@ double optim_value(double x, Optim* optim, bool maximum) {
 // optim: an object inheriting from Optim, with double value(double) member function
 // Other parameters can be stored in members of Optim class
 double optimize(Optim* optim, double lower, double upper, bool maximum = false,
-				double tol = pow(DBL_EPSILON, 0.25)) {
+				double tol = pow(DBL_EPSILON, 0.25)) { 
 	return Brent_fmin(lower, upper, (double (*)(double, void*, bool)) optim_value, optim,
 		maximum, tol);
 }

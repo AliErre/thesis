@@ -2,8 +2,8 @@
 #define RECONSTRUCTION_H
 #include <memory>
 #include <vector>
-#include <Rcpp.h>
 #include "optimize.h"
+#include "reconstKraus.h"
 using namespace Rcpp;
 
 class ReconstructionBase {
@@ -15,7 +15,7 @@ class ReconstructionBase {
 
         // specialize
         virtual ~ReconstructionBase() = default; // polymorphism => need virtual destructor
-        virtual List reconstructCurve(double, int, NumericVector, int, int, bool) const = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
+        virtual List reconstructCurve(double, bool) const = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
 
         // same for all derived
         std::vector<int> find_obs_inc(const NumericMatrix&) const; //farne una free function?
@@ -40,9 +40,7 @@ class ReconstructionKraus : public ReconstructionBase{
         ReconstructionKraus(const NumericMatrix& Y) : ReconstructionBase(Y) {};
 
         //override
-        List reconstructCurve(double, int, NumericVector, int, int, bool) const override;//metodo che sarà chiamato da R
-        
-        //aggiungi data member per gcv?
+        List reconstructCurve(double, bool) const override;//metodo che sarà chiamato da R
 
 };
 
@@ -58,4 +56,4 @@ class ReconstructionKraus : public ReconstructionBase{
 
 };*/
 
-#endif RECONSTRUCTION_H
+#endif

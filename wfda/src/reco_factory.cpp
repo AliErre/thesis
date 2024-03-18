@@ -1,12 +1,13 @@
 # include "reco_factory.h"
 
-//TODO: capire se passare tpoints come const reference o no!!
-std::unique_ptr<ReconstructionBase> reconstructionFactory(const std::string& id, const NumericMatrix& Y) {
+//.factory function typically expects a function pointer that returns a raw pointer (T*) rather than a smart pointer like std::unique_ptr. 
+//R's memory management model doesn't directly align with C++ smart pointers
+ReconstructionBase* reconstructionFactory(const std::string& id, const NumericMatrix& Y) {
     if (id == "Kraus") {
-        return std::make_unique<ReconstructionKraus>(Y);
-    } else if (id == "KLAl") {
-        return std::make_unique<ReconstructionKLAl>(Y);
-    } else {
+        return new ReconstructionKraus(Y);//must use raw pointers to be compatible to R
+    } /*else if (id == "KLAl") {
+        return new ReconstructionKLAl(Y);
+    }*/ else {
         return nullptr;
     }
 }
