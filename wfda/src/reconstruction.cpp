@@ -99,7 +99,7 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
 }
 
 
-List ReconstructionKraus::reconstructCurve(double alpha, bool all) const{
+List ReconstructionKraus::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector()) const{
 //dovrei avere già mean_vec e cov_mat nella classe appena chiamo il costruttore
   int n = m_Y.ncol();
   IntegerVector reconst_fcts;
@@ -179,5 +179,50 @@ List ReconstructionKraus::reconstructCurve(double alpha, bool all) const{
                       _["alpha"]         = alpha_vec, 
                       _["df"]            = df_vec,
                       _["W_reconst_mat"] = W_reconst_mat)); 
+
+}
+
+
+//extrapolation method for reconstruction from last observed period
+List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector()) const{
+  int r = periods.length(); //m_Y.nrow()
+  int n = m_Y.ncol();
+  double sum = 0.0;
+  NumericVector mean_slope(r-1); //slope media per ogni riga
+  IntegerVector no_rec_fcts(n-m_reconst_fcts.size());
+  //build vector of indeces not in m_reconst_fcts
+  int row = 0;
+  double sum = 0.0;
+  for( int i = 0; i < m_Y.ncol();i++){
+    bool found = std::binary_search(m_reconst_fcts.begin(),m_reconst_fcts.end(),i);//works cause reconst_fcts is an ordered vector
+    if(!found){no_rec_fcts(row) = i; row++;}
+  }
+
+  for(int j = 0; j < r-1; j++)
+  {
+    for(auto& index:no_rec_fcts)
+      sum += m_Y(r-1,index) - m_Y(j,index);
+    mean_slope(j) = sum/(no_rec_fcts.length()*(periods(r) - periods(j)));
+  }
+
+  NumericMatrix Y_reconstruct(r,n);
+  for(auto& index:m_reconst_fcts)
+  {
+    const NumericVector& col_Y = m_Y(_,index);//trasforma tutte le copie che hai fatto in const references per EVITARE COPIE
+    const LogicalVector& id_na = is_na(col_Y);//check nelle slide pacs se posso bindare const ref a un temporary
+    NumericVector observed_periods = periods[!id_na];
+    double last_obs_period = observed_periods[observed_periods.size()-1];
+    const NumericVector& slopes = mean_slope[!id_na];
+    double last_slope = slopes[slopes.size()-1];
+    const NumericVector& observed_col_Y = col_Y[!id_na];
+    double last_obs_value = observed_col_Y[observed_col_Y.size()-1];
+    //reconstruct with equation of a straight line
+    for(auto& index_na:id_na){
+      if(index_na)
+        Y_reconstruct(index_na, index) = last_obs_value + last_slope*(periods(index_na)-last_obs_period);
+    }
+  }
+  return List::create(_["Extrapolated_curves"] = Y_reconstruct,
+                      _["mean_slopes"] = mean_slope);
 
 }
