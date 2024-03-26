@@ -15,7 +15,7 @@ class ReconstructionBase {
 
         // specialize
         virtual ~ReconstructionBase() = default; // polymorphism => need virtual destructor
-        virtual List reconstructCurve(double, bool, const NumericVector&) const = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
+        virtual List reconstructCurve(double, bool, const NumericVector&, int, int) = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
 
         // same for all derived
         std::vector<int> find_obs_inc(const NumericMatrix&) const; //farne una free function?
@@ -40,7 +40,7 @@ class ReconstructionKraus : public ReconstructionBase{
         ReconstructionKraus(const NumericMatrix& Y) : ReconstructionBase(Y) {};
 
         //override
-        List reconstructCurve(double, bool, const NumericVector&) const override;//metodo che sarà chiamato da R
+        List reconstructCurve(double, bool, const NumericVector&, int, int) override;//metodo che sarà chiamato da R
 
 };
 
@@ -50,22 +50,36 @@ class ReconstructionExtrapolation : public ReconstructionBase{
         ReconstructionExtrapolation(const NumericMatrix& Y) : ReconstructionBase(Y) {};
 
         //override
-        List reconstructCurve(double, bool, const NumericVector&) const override;//metodo che sarà chiamato da Rù
-    private:
-        NumericVector m_Tperiod;
+        List reconstructCurve(double, bool, const NumericVector&, int, int) override;//metodo che sarà chiamato da R
+        //NumericVector è T.periods in R
 
 };
 
-/*class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un double o un int in R
+class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un double o un int in R
     public: 
-        ReconstructionKLAl(const NumericMatrix& Y): 
-                           ReconstructionBase(Y) {}; //per unique_ptr
-        List reconstructCurve(unsigned,double,int,NumericVector,int,int) override;
-        NumericVector t_points() const override { return m_t_points; }
+        ReconstructionKLAl(const NumericMatrix& Y): //dovrò aggiungere questi argomenti a reco_factory
+                           ReconstructionBase(Y) {}; 
+        List reconstructCurve(double, bool, const NumericVector&, int, int) override;
+        //NumericVector è t.points, K, nRegGrid, maxBins
+        void myfpca(const std::vector<std::vector<double>>&, const std::vector<std::vector<double>>&, bool, bool, int, bool);
+        //Ly, Lu, reconst_fcts,CEscores, center, maxBins 
 
     private:
-        NumericVector m_t_points = NumericVector::create(); // length(m_t_points) = nrow(curves.train) check type
-
-};*/
+        std::pair<std::vector<double>, NumericMatrix> m_Y_preprocessed;
+        std::vector<std::vector<double>> m_observed_period;
+        arma::mat m_cov_est;
+        NumericVector m_mu;
+        List m_muO;
+        List m_scoresO;
+        List m_CE_scoresO;
+        arma::mat m_efunctions;
+        List m_efunctionsO;
+        List m_efun_reconst;
+        arma::vec m_evalues;
+        List m_evaluesOO;
+        List m_obs_argvalsO;
+        List m_locO;
+        double m_sigma2;
+};
 
 #endif

@@ -5,9 +5,9 @@
 ReconstructionBase* reconstructionFactory(const std::string& id, const NumericMatrix& Y) {
     if (id == "Kraus") {
         return new ReconstructionKraus(Y);//must use raw pointers to be compatible to R
-    } /*else if (id == "KLAl") {
+    } else if (id == "KLAl") {
         return new ReconstructionKLAl(Y);
-    }*/ else {
+    }else {
         return nullptr;
     }
 }
