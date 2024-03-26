@@ -9,7 +9,7 @@ List reconstKL_fun(const NumericVector&, const std::vector<double>&, const arma:
                    const arma::vec&, const NumericMatrix&, const NumericVector&, int);
 
 std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tuple<int, double, double>>&, 
-                                                       bool binning = false, int max_bins);
+                                                       bool binning, int max_bins);
 
 std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix&,const NumericMatrix&,const NumericVector&,
                                                   int, int, int);
