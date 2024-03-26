@@ -5,7 +5,8 @@
 using namespace Rcpp;
 // [[Rcpp::export]]
 List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, 
-                   const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k)
+                   const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k,
+                   const arma::vec& evaluesO = arma::vec(), const std::vector<double>& argvalsO = std::vector<double>(), const arma::mat& cov = arma::mat())
 {
   //non so se esportarla, o se la esporto devo avere a disposzione tutti sti dati comunque
   int K = std::min(k, efunc_r.ncol());
@@ -20,9 +21,16 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
     reconstr.subvec(max + 1, argvals.size() - 1) += fragmO[fragmO.size() - 1] - reconstr[max];
     reconstr(locO) = as<arma::vec>(fragmO);//controlla poi che anche a me fragmO venga di dimensione locO.size()
   }
+  NumericVector weights_reconst;
+  /*if(cov.is_empty() || evaluesO.is_empty())
+  {
+    weights_reconst = NumericVector();
+  }else{
+
+  }*/
 
   //weights null, metterlo qua? in R ritorna un NULL
-  return List::create(Named("y_reconst") = reconstr);//ritorna anche argvals ma mi sembra una cosa scema visto che è l'argomento con cui è chiamata
+  return List::create(Named("y_reconst") = reconstr, Named("w_reconst") = weights_reconst);//ritorna anche argvals ma mi sembra una cosa scema visto che è l'argomento con cui è chiamata
 }
 
 std::vector<std::tuple<int, double, double>> //a me viene che ydata è già complete
@@ -555,7 +563,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
     {
       NumericVector y;
       
-      NumericVector x(argvalsO_i.begin(),argvalsO_i.end()); //argvalsO_i[obs_locO] = argvalsO_i per costruzione!
+      NumericVector x = wrap(argvalsO_i); //argvalsO_i[obs_locO] = argvalsO_i per costruzione!
       for(const auto&u: obs_locO)
       {
         y.push_back(Y_pred(i,u));//stats::na.omit((Y.pred[i,]))

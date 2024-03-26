@@ -376,7 +376,8 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
   int r = m_Y.nrow();
   std::vector<std::vector<double>> Y_list(n);
   std::vector<std::vector<double>> U_list(n);
-
+  NumericVector reconst_fcts;
+  if(all){reconst_fcts = seq_len(n) - 1;}else{reconst_fcts = wrap(m_reconst_fcts);}
   for(int i = 0; i < n; i++)
   {
     std::vector<double> keep;
@@ -424,6 +425,72 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
       std::string method = "KlAl4";
       K_vec.push_back(gcvKneipLiebl(m_mu,m_Y_preprocessed, argvalsO_i,m_muO[i], m_locO[i], m_cov_est, m_sigma2, method, 0.99));
     }else{K_vec.push_back(K);}
+
+
+    NumericVector y = (m_Y_preprocessed.second)(reconst_fcts[i],_);
+    LogicalVector no_na = !is_na(y);
+    NumericVector y_c = y[no_na];
+    NumericVector obs_argvals = wrap(m_obs_argvalsO[i]); //wrap the arma::vec
+    NumericVector argvalsO_i_vector = wrap(argvalsO_i);
+
+    Environment stats = Environment::namespace_env("stats");
+    Function smooth_spline = stats["smooth.spline"];
+    List smooth_fit = smooth_spline(Named("y") = y_c, Named("x") = obs_argvals);
+    Function predict = stats["predict"];
+    List fragmO_presmooth_list = predict(smooth_fit, argvalsO_i_vector);
+    NumericVector fragmO_presmooth = fragmO_presmooth_list[2];
+
+    List result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], m_efun_reconst[i], fragmO_presmooth, K_vec[i],
+                                m_evaluesOO[i], m_observed_period[i], m_cov_est);
+    // argvals = m_Y_preprocessed.first;
+    //devo cambiare reconstKL_fun la lista degli argomenti passati
+    //m_mu  m_Y_preprocessed.first   m_locO[i]    m_CE_scoresO[i]    m_efun_reconst[i]    fragmO_presmooth     K_vec[i]
+    //List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, 
+    //               const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k)
+    //fpca_obj$evaluesO[[i]]      fpca_obj$argvalsO[[i]]  fpca_obj$cov
   }
-  
+ 
+
+
+  /*smooth.fit        <- suppressMessages(stats::smooth.spline(y=c(stats::na.omit(c(fpca_obj$Y[reconst_fcts[i],]))), x=fpca_obj$obs_argvalsO[[i]]))
+      fragmO_presmooth  <- stats::predict(smooth.fit, fpca_obj$argvalsO[[i]])$y
+      ##
+      result_tmp <- reconstKneipLiebl_fun(mu          = fpca_obj$mu,
+                                          cov         = fpca_obj$cov,#cov_est? aggiungi al return
+                                          argvals     = fpca_obj$argvals, 
+                                          argvalsO    = fpca_obj$argvalsO[[i]], 
+                                          scoresO     = fpca_obj$CE_scoresO[[i]], 
+                                          efun_reconst= fpca_obj$efun_reconst[[i]],
+                                          evaluesO    = fpca_obj$evaluesO[[i]],
+                                          fragmO      = fragmO_presmooth, 
+                                          K           = K_vec[i])
+      ##
+      Y_reconst_list[[i]]   <- result_tmp[['y_reconst']]
+      U_reconst_list[[i]]   <- result_tmp[['x_reconst']]
+      W_reconst_list[[i]]   <- result_tmp[['w_reconst']]*/
+
+      //riaggiungi nRegGrid l hai tolto senza motivo
+
+      /*if(!is.null(nRegGrid)){
+    ## Evaluate the reconstruced functions at a regular gird of length nRegGrid
+    xout <- seq(from = min(fpca_obj$argvals), to = max(fpca_obj$argvals), len=nRegGrid)
+    ##
+    for(i in 1:length(reconst_fcts)){ # i <- 1
+      if(all(is.na(Y_reconst_list[[i]]))){
+        Y_reconst_list[[i]]  <- rep(NA, length(xout))
+        U_reconst_list[[i]]  <- xout
+      } else {
+        Reconstr_on_RegGrid  <- stats::spline(y = Y_reconst_list[[i]], x = U_reconst_list[[i]], xout = xout)
+        Y_reconst_list[[i]]  <- Reconstr_on_RegGrid$y
+        U_reconst_list[[i]]  <- Reconstr_on_RegGrid$x
+      }
+    }
+    
+    
+    return(list(
+    "Y_reconst_list"  = Y_reconst_list,
+    "U_reconst_list"  = U_reconst_list,
+    "W_reconst_list"  = W_reconst_list,
+    "K"               = K_vec
+  ))*/
 }

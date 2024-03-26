@@ -6,7 +6,8 @@ using namespace Rcpp;
 //inner reconstruction function called in the gcv, with gcv parameter k
 //if method is KLAl5, fragmO.size() = 0
 List reconstKL_fun(const NumericVector&, const std::vector<double>&, const arma::uvec&, 
-                   const arma::vec&, const NumericMatrix&, const NumericVector&, int);
+                   const arma::vec&, const NumericMatrix&, const NumericVector&, int,
+                   const arma::vec&, const std::vector<double>&, const arma::mat&);
 
 std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tuple<int, double, double>>&, 
                                                        bool binning, int max_bins);
