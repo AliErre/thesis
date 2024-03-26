@@ -31,11 +31,12 @@ double gcv::value(double x){//gcvKrausFun
         NumericVector X_fit = X_cent_reconst_vec + m_mean_gcv;
         NumericVector X_fit_subset = X_fit[m_M_bool];//non potevo fare la chiamata direttamente con X_fit[m_M_bool]
         for(int i = 0;i < original.length();++i)
-        rss[j] = sum(pow(X_fit_subset-original,2));//pow() non è efficiente
+            rss[j] = sum(pow(X_fit_subset-original,2));//pow() non è efficiente
 
         if(j == n-1)
             {df = result["df"];}
+    }
     double gcv = sum(rss)/(std::pow(1-df/n,2)); // std::pow() non è efficiente, farlo io
     Rcout<<"GCV metric: "<<gcv<<std::endl;
     return gcv;
-}}
+}

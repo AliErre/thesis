@@ -45,7 +45,7 @@ find_complete_tuple(const std::vector<std::tuple<int, double, double>>& y_data)
 
 //irreg2mat <- function(ydata, binning = FALSE, maxbins = 1000)
 std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tuple<int, double, double>>& y_data, 
-                                             bool binning = false, int max_bins){ //vedi se aggiungere il default = 1000 per maxBins
+                                             bool binning, int max_bins){
 
   //crea una copia
   std::vector<std::tuple<int, double, double>> y_data_complete(find_complete_tuple(y_data));
@@ -60,7 +60,7 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   }//bins è per forza uguale a t_points
   //ids sarà già ordinato, non c'è bisogno di chiamare sort
   int nobs = std::distance(ids.begin(),std::unique(ids.begin(),ids.end()));//corretto
-  bool condition = binning && bins.size() > max_bins;//false
+  bool condition = binning && bins.size() > static_cast<size_t>(max_bins);//false
   std::vector<double> binvalues = make_bins(bins, max_bins,condition);//bins sarà modificato, chiamo make_bins con la reference
   //associa a std::get<1>(t) un bin => crea classi di .index
 
@@ -85,7 +85,7 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   //associate index
   std::vector<int> column_indices(classes.size()); //vedi se trasformare in size_t       
 
-  for (int i = 0; i < classes.size(); ++i) {
+  for (size_t i = 0; i < classes.size(); ++i) {
       auto it = std::find(sorted_classes.begin(), sorted_classes.end(), classes[i]);//lo trova per forza. find su un vettore restituisce iteratore
       column_indices[i] = std::distance(sorted_classes.begin(), it);
   }
@@ -120,7 +120,7 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
   for (int idx = 0; idx < i; ++idx) {
 
     IntegerVector obs_points = seq_len(d) - 1;//0 based index
-    IntegerVector obs_points = obs_points[!is_na(Y_second(idx, _))];
+    obs_points = obs_points[!is_na(Y_second(idx, _))];
 
     for(int i = 0; i < obs_points.size(); ++i) {
         for(int j = 0; j < obs_points.size(); ++j) {
@@ -245,9 +245,9 @@ double weighted_mean(const std::vector<double>& v, const std::vector<double>& w)
 
 double trapezioidal_rule(const arma::vec& values, const arma::vec& knots){
   double integral = 0.0;
-  int n = knots.size();
+  size_t n = knots.size();
 
-  for (arma::uword i = 1; i < n; ++i) {
+  for (size_t i = 1; i < n; ++i) {
       integral += (knots[i] - knots[i - 1]) * (values[i] + values[i - 1]) / 2.0;
   }
 
@@ -300,13 +300,13 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   int T1_min = std::distance(argvals.begin(), it); //in R which returns an index
 
   double upper_bound = argvals[argvals.size()] - 0.25 * T_len;
-  auto it = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
-  if(it != argvals.begin())
+  auto it_max = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
+  if(it_max != argvals.begin())
   {
-    --it;
+    --it_max;
   }
 
-  int T1_max = std::distance(argvals.begin(), it);// = 0 se sono tutti maggiori di upper_bound. Ma non dovrebbe succedee
+  int T1_max = std::distance(argvals.begin(), it_max);// = 0 se sono tutti maggiori di upper_bound. Ma non dovrebbe succedee
   arma::vec diag_diff = as<arma::vec>(diagG0) - arma::diagvec(cov_est);
   arma::vec sub_diag = diag_diff.rows(T1_min, T1_max);
   std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max);
@@ -342,7 +342,8 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     arma::mat eigenvectorsO;
     arma::eig_sym(evaluesO, eigenvectorsO, VO);
     evaluesO.transform([](double val){ return val <= 0 ? 0.0 : val;});
-    int npcO = arma::sum(evaluesO > 0) - 1;
+    size_t npcO = arma::sum(evaluesO > 0);
+    if(npcO == 0){stop("no eigen values greater than 0");}else{npcO--;}
 
     double sum_pos_O = arma::sum(evaluesO(arma::find(evaluesO > 0)));
 
@@ -400,7 +401,8 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     }
 
     //reconstructive eigenfunctions
-    NumericMatrix efun_reconst_i(argvals.size(), npcO + 1*(!true), NA_REAL);
+    NumericMatrix efun_reconst_i(argvals.size(), npcO + 1*(!true));
+    efun_reconst_i.fill(NA_REAL);
     for(int k = 0; k < efun_reconst_i.ncol(); ++k)
     {
       NumericVector c = efun_reconst_i(_,k);
@@ -491,17 +493,18 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   arma::mat eigenvectorsO;
   arma::eig_sym(evaluesO, eigenvectorsO, VO);//se li passo posso saltare questa parte
   evaluesO.transform([](double val){ return val <= 0 ? 0.0 : val;});
-  int npcO = arma::sum(evaluesO > 0) - 1;//vedi se togliere 1, ricontrolla anche se in eigen ha senso
+  size_t npcO = arma::sum(evaluesO > 0);
+  if(npcO == 0){stop("no eigenvalues greater than 0");}else{npcO--;};//vedi se togliere 1, ricontrolla anche se in eigen ha senso
   double sum_pos_O = arma::sum(evaluesO(arma::find(evaluesO > 0)));
   if (!NumericVector::is_na(pev)) { //riguardare default di pev, in R è NULL, qua sto facendo come se fosse NA_REAL
-    arma::uword npc_index_i;
+    size_t npc_index_i = 0;
 
     arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0))); // Cumulative sum of positive eigenvalues
     double threshold = pev * sum_pos_O; // Calculate the threshold value
     arma::uvec indices = arma::find(cumsum_pos_O >= threshold);
 
     if(!indices.is_empty())//in realtà non dovrebbe essere mai empty
-      {npc_index_i = indices[0]; npcO = static_cast<int>(npc_index_i);}
+      {npc_index_i = indices[0]; npcO = npc_index_i;}
     
   }//forse in realtà è giusto rifare questi calcoli da capo perchè sto usando Y_pred??
 
@@ -511,7 +514,8 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   arma::mat Z = efunctionsO_i;
 
   //reconstructive eigenfunctions
-  NumericMatrix efun_reconst_i(argvals.size(), npcO + 1, NA_REAL);//+1 perchè era un indice
+  NumericMatrix efun_reconst_i(argvals.size(), npcO + 1);//+1 perchè era un indice
+  efun_reconst_i.fill(NA_REAL);
   for(int k = 0; k < efun_reconst_i.ncol(); ++k)
   {
     NumericVector c = efun_reconst_i(_,k);
@@ -523,17 +527,18 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
 
   if(too_few)
   {
-    arma::uword npc_index_i;
+    size_t npc_index_i;
     arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0)));
     double threshold = 0.9 * sum_pos_O; // Calculate the threshold value
     arma::uvec indices = arma::find(cumsum_pos_O >= threshold);
 
     if(!indices.is_empty())//in realtà non dovrebbe essere mai empty
-      {npc_index_i = indices[0]; npcO = static_cast<int>(npc_index_i);return npcO;}//npcO = K.pve in R  
+      {npc_index_i = indices[0]; npcO = npc_index_i;return npcO;}//npcO = K.pve in R  
   }
   //effettivamente dovrei crearmi la variabile n_comp e usarla al posto di .nrow()
 
-  NumericMatrix rss_mat(Y_pred.nrow(),npcO+1,NA_REAL);//se sono arrivata fino a qua c'erano righe complete
+  NumericMatrix rss_mat(Y_pred.nrow(),npcO+1);
+  rss_mat.fill(NA_REAL);//se sono arrivata fino a qua c'erano righe complete
   for(int i = 0; i < rss_mat.nrow(); ++i){
     NumericVector Y_cent = Y_pred(i,_) - mu;//aggiungi mu alle cose ricevute da gcvKneipLiebl. forse devo creare mu come riga, non so se cosi fa la differenza
     arma::uvec obs_locO(Y_pred.ncol() - sum(is_na(Y_cent)));//giusto
@@ -573,13 +578,13 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
         Zcur = Z.submat(arma::span(obs_locO[0], obs_locO[obs_locO.size()-1]),arma::span(0, npcO_new - 1));//controlla
         ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO_new - 1),arma::span(0, npcO_new - 1)));
         CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//arma::vec sono vettori colonna, controlla dimensioni
-        CE_scoresO(CE_scoresO_i.size() + npcO + 1 -npcO_new);//perchè npcO è un indice
+        CE_scoresO = NumericVector(CE_scoresO_i.size() + npcO + 1 -npcO_new);//perchè npcO è un indice
       }else{
         Zcur = Z.rows(obs_locO);
         ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv);
         CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;
       }
-      for(int k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro e parte da 1, io avevo usato npcO come indice quindi tolto 1
+      for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro e parte da 1, io avevo usato npcO come indice quindi tolto 1
       {
         List result_tmp = reconstKL_fun(mu, argvals, locO, 
                                         CE_scoresO, efun_reconst_i, fragmO_presmooth, k);
@@ -595,7 +600,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
     }
   }//end for
   std::vector<double> gcv_k_vec; gcv_k_vec.reserve(npcO+1);
-  for(int i = 0; i < npcO + 1; ++i)
+  for(size_t i = 0; i < npcO + 1; ++i)
   {
     double sum = 0.0;
     for(int r = 0; r < rss_mat.nrow(); ++r)

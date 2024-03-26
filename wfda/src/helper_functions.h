@@ -39,7 +39,7 @@ std::vector<T> unlist(const std::vector<std::vector<T>>& vec)
   {
     size += it->size();
   }
-
+  std::vector<T> unrolled;
   unrolled.reserve(size);
   for (const auto& inner_vec : vec) {
       for (const auto& item : inner_vec) {

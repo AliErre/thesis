@@ -200,7 +200,6 @@ List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all 
   IntegerVector no_rec_fcts(n-m_reconst_fcts.size());
   //build vector of indeces not in m_reconst_fcts
   int row = 0;
-  double sum = 0.0;
   for( int i = 0; i < m_Y.ncol();i++){
     bool found = std::binary_search(m_reconst_fcts.begin(),m_reconst_fcts.end(),i);//works cause reconst_fcts is an ordered vector
     if(!found){no_rec_fcts(row) = i; row++;}
@@ -239,7 +238,7 @@ List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all 
 //mettere maxBins default Nullable
 void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, const std::vector<std::vector<double>>& Lu, 
                                 bool scores = false, bool center = true, int max_bins = 1000, bool all = false){
-  int n = Ly.size();
+  //int n = Ly.size();
   std::vector<int> id_vec = generateIdVec(Ly);
   std::vector<std::tuple<int, double, double>> ydata;
   ydata.reserve(id_vec.size());//giusto
@@ -251,11 +250,11 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
     ydata.push_back(std::make_tuple(id_vec[i],unlist(Lu)[i],unlist(Ly)[i])); // .id,(time) .index, .value
   }
   constexpr int nbasis = 10;//vedi se ha senso mettere qua constexpr
-  int max_bins = (max_bins == 0)? 1000 : max_bins; //cambia il default, non deve essere 0 ma NULL
+  max_bins = (max_bins == 0)? 1000 : max_bins; //cambia il default, non deve essere 0 ma NULL
   //bool useSymm = false;//se sono sempre false finsico sempre negli stessi branch
   //bool makePD = false;
 
-  std::pair<std::vector<double>,NumericMatrix> Y = irreg2mat(ydata, true, max_bins);
+  std::pair<std::vector<double>,NumericMatrix> Y = irreg2mat(ydata, true, max_bins);//binning = true
   m_Y_preprocessed = Y;
   //argvals è Y.first
   IntegerVector reconst_fcts;
@@ -389,8 +388,10 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
       for(int j = 0; j < r; j++)
       {
         if(!NumericVector::is_na(m_Y(j,i)))
-          keep.push_back(m_Y(j,i));
-          keep_t.push_back(t_points[j]);
+          {
+            keep.push_back(m_Y(j,i));
+            keep_t.push_back(t_points[j]);
+          }
       }
       keep.shrink_to_fit();
       keep_t.shrink_to_fit();
@@ -418,11 +419,11 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
       stop("The range of obs_argvalsO of the fragment must equal the range of argvalsO");
     }
     
-    if(K = 0)//per ora ho dato il default a 0, ma poi mettere Nullable
+    if(K == 0)//per ora ho dato il default a 0, ma poi mettere Nullable
     {
       std::string method = "KlAl4";
       K_vec.push_back(gcvKneipLiebl(m_mu,m_Y_preprocessed, argvalsO_i,m_muO[i], m_locO[i], m_cov_est, m_sigma2, method, 0.99));
     }else{K_vec.push_back(K);}
   }
-
+  
 }

@@ -34,7 +34,7 @@ std::vector<double> make_bins(std::set<double>& bins, int maxbins, bool f) {
     double start = (1 - 0.001 * (minValue > 0.0 ? 1 : (minValue < 0.0 ? -1 : 0.0))) * minValue;
     double end = (1 + 0.001 * (maxValue > 0.0 ? 1 : (maxValue < 0.0 ? -1 : 0.0))) * maxValue;
     if(start == 0) start = -0.001;
-    if (end == 0) end == 0.001;
+    if (end == 0) end = 0.001;
 
     bins.erase(std::prev(bins.end()));//cant do iteartor - 1 for sets cause theyre not contiguous elements
     std::set<double> temp = bins;
