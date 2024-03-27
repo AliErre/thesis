@@ -21,17 +21,40 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
     reconstr.subvec(max + 1, argvals.size() - 1) += fragmO[fragmO.size() - 1] - reconstr[max];
     reconstr(locO) = as<arma::vec>(fragmO);//controlla poi che anche a me fragmO venga di dimensione locO.size()
   }
-  NumericVector weights_reconst;
-  /*if(cov.is_empty() || evaluesO.is_empty())
+  arma::vec weights_reconst;
+  if(cov.is_empty() || evaluesO.is_empty())
   {
-    weights_reconst = NumericVector();
+    weights_reconst = arma::vec();
   }else{
+    std::vector<size_t> locM;
+    locM.reserve(argvals.size());
+    for(size_t i = 0; i < argvals.size(); ++i){
+      if(arma::find(locO == i, 1).is_empty())
+        locM.push_back(i);
+    }
+    locM.shrink_to_fit();
+    arma::vec diag_cov = arma::diagvec(cov);
+    arma::vec v2_reconstr = diag_cov.subvec(locM[0],locM[locM.size()-1]);
+    arma::vec v_hat_reconstr(v2_reconstr.size());
+    if(arma::all(v2_reconstr > 0)){
+      arma::vec v_reconstr = arma::sqrt(v2_reconstr);
+      double h0 = 0.2*arma::max(v_reconstr);
+      std::transform(v_reconstr.begin(), v_reconstr.end(), v_hat_reconstr.begin(),
+                     [h0](double value){return (h0 < value ? value : 0);});
 
-  }*/
-
-  //weights null, metterlo qua? in R ritorna un NULL
+    }else{
+      v_hat_reconstr.fill(0.01);
+    }
+    weights_reconst.resize(argvals.size());
+    weights_reconst.fill(1);
+    for(size_t i = 0; i < v_hat_reconstr.size(); ++i)
+    {
+      weights_reconst[locM[i]] -= v_hat_reconstr[i]/std::pow(v2_reconstr[i],0.5);
+    }
+  }
   return List::create(Named("y_reconst") = reconstr, Named("w_reconst") = weights_reconst);//ritorna anche argvals ma mi sembra una cosa scema visto che è l'argomento con cui è chiamata
 }
+
 
 std::vector<std::tuple<int, double, double>> //a me viene che ydata è già complete
 find_complete_tuple(const std::vector<std::tuple<int, double, double>>& y_data)
@@ -472,11 +495,13 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   }
 
   std::vector<double> argvals(Y_preprocessed.first);
-  std::vector<arma::uword> locM;
-  for(arma::uword i = 0; i < argvals.size(); ++i){
+  std::vector<size_t> locM;
+  locM.reserve(argvals.size());
+  for(size_t i = 0; i < argvals.size(); ++i){
     if(arma::find(locO == i, 1).is_empty())
       locM.push_back(i);
   }
+  locM.shrink_to_fit();
 
   NumericMatrix Y_pred(clone(Y_c));
   for(int i = 0; i < Y_pred.nrow(); ++i)

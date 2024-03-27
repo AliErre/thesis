@@ -11,6 +11,23 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// reconstKL_fun
+List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k);
+RcppExport SEXP _wfda_reconstKL_fun(SEXP muSEXP, SEXP argvalsSEXP, SEXP locOSEXP, SEXP scoresOSEXP, SEXP efunc_rSEXP, SEXP fragmOSEXP, SEXP kSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type argvals(argvalsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type locO(locOSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type scoresO(scoresOSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type efunc_r(efunc_rSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type fragmO(fragmOSEXP);
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    rcpp_result_gen = Rcpp::wrap(reconstKL_fun(mu, argvals, locO, scoresO, efunc_r, fragmO, k));
+    return rcpp_result_gen;
+END_RCPP
+}
 // reconstKraus_fun
 List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec, const NumericMatrix& cov_mat, unsigned index, double alpha);
 RcppExport SEXP _wfda_reconstKraus_fun(SEXP YSEXP, SEXP mean_vecSEXP, SEXP cov_matSEXP, SEXP indexSEXP, SEXP alphaSEXP) {
@@ -26,11 +43,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// compute
+NumericMatrix compute(List& s31, List& s32, NumericVector& rangeval, List& s33);
+RcppExport SEXP _wfda_compute(SEXP s31SEXP, SEXP s32SEXP, SEXP rangevalSEXP, SEXP s33SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List& >::type s31(s31SEXP);
+    Rcpp::traits::input_parameter< List& >::type s32(s32SEXP);
+    Rcpp::traits::input_parameter< NumericVector& >::type rangeval(rangevalSEXP);
+    Rcpp::traits::input_parameter< List& >::type s33(s33SEXP);
+    rcpp_result_gen = Rcpp::wrap(compute(s31, s32, rangeval, s33));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP _rcpp_module_boot_reconstruction();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_wfda_reconstKL_fun", (DL_FUNC) &_wfda_reconstKL_fun, 7},
     {"_wfda_reconstKraus_fun", (DL_FUNC) &_wfda_reconstKraus_fun, 5},
+    {"_wfda_compute", (DL_FUNC) &_wfda_compute, 4},
     {"_rcpp_module_boot_reconstruction", (DL_FUNC) &_rcpp_module_boot_reconstruction, 0},
     {NULL, NULL, 0}
 };
