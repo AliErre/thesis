@@ -106,7 +106,7 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
 }
 
 
-List ReconstructionKraus::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector(), int K = 0, int maxBins = 0) {
+List ReconstructionKraus::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector(), int K = 0, int maxBins = 0, int nRegGrid = 0) {
 //dovrei avere già mean_vec e cov_mat nella classe appena chiamo il costruttore
   int n = m_Y.ncol();
   IntegerVector reconst_fcts;
@@ -192,7 +192,7 @@ List ReconstructionKraus::reconstructCurve(double alpha = 0.0, bool all = FALSE,
 
 //extrapolation method for reconstruction from last observed period
 //cambiare i default a nullable
-List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector(),int K = 0, int maxBins = 0) {
+List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector(),int K = 0, int maxBins = 0, int nRegGrid = 0) {
   int r = periods.length(); //m_Y.nrow()double, bool, const NumericVector&, int, int, int
   int n = m_Y.ncol();
   double sum = 0.0;
@@ -370,7 +370,7 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
 }
 
 
-List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, const NumericVector& t_points = NumericVector(), int K = 0, int maxBins = 0)
+List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, const NumericVector& t_points = NumericVector(), int K = 0, int maxBins = 0, int nRegGrid = 0)
 { 
   int n = m_Y.ncol();
   int r = m_Y.nrow();
@@ -412,6 +412,11 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
   int length_reconst_fcts = m_obs_argvalsO.length();//per come è stata costruita in eigen è di dimensione pari a lunghezza reconst_fcts
   std::vector<double> K_vec;
   K_vec.reserve(length_reconst_fcts);
+  List Y_reconstr_list(length_reconst_fcts);
+  List W_reconst_list(length_reconst_fcts);
+  List U_reconst_list(length_reconst_fcts);
+  Environment stats = Environment::namespace_env("stats");
+  NumericVector x = wrap(m_Y_preprocessed.first);
   for(int i = 0; i < length_reconst_fcts; ++i){
     arma::vec obs = m_obs_argvalsO[i];
     std::vector<double> argvalsO_i = m_observed_period[i];//è argvalsO[i] in R
@@ -433,7 +438,6 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
     NumericVector obs_argvals = wrap(m_obs_argvalsO[i]); //wrap the arma::vec
     NumericVector argvalsO_i_vector = wrap(argvalsO_i);
 
-    Environment stats = Environment::namespace_env("stats");
     Function smooth_spline = stats["smooth.spline"];
     List smooth_fit = smooth_spline(Named("y") = y_c, Named("x") = obs_argvals);
     Function predict = stats["predict"];
@@ -442,55 +446,31 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
 
     List result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], m_efun_reconst[i], fragmO_presmooth, K_vec[i],
                                 m_evaluesOO[i], m_observed_period[i], m_cov_est);
-    // argvals = m_Y_preprocessed.first;
-    //devo cambiare reconstKL_fun la lista degli argomenti passati
-    //m_mu  m_Y_preprocessed.first   m_locO[i]    m_CE_scoresO[i]    m_efun_reconst[i]    fragmO_presmooth     K_vec[i]
-    //List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, 
-    //               const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k)
-    //fpca_obj$evaluesO[[i]]      fpca_obj$argvalsO[[i]]  fpca_obj$cov
+    Y_reconstr_list[i] = result["y_reconst"];
+    W_reconst_list[i] = result["w_reconst"];
+    U_reconst_list[i] = x;
   }
- 
-
-
-  /*smooth.fit        <- suppressMessages(stats::smooth.spline(y=c(stats::na.omit(c(fpca_obj$Y[reconst_fcts[i],]))), x=fpca_obj$obs_argvalsO[[i]]))
-      fragmO_presmooth  <- stats::predict(smooth.fit, fpca_obj$argvalsO[[i]])$y
-      ##
-      result_tmp <- reconstKneipLiebl_fun(mu          = fpca_obj$mu,
-                                          cov         = fpca_obj$cov,#cov_est? aggiungi al return
-                                          argvals     = fpca_obj$argvals, 
-                                          argvalsO    = fpca_obj$argvalsO[[i]], 
-                                          scoresO     = fpca_obj$CE_scoresO[[i]], 
-                                          efun_reconst= fpca_obj$efun_reconst[[i]],
-                                          evaluesO    = fpca_obj$evaluesO[[i]],
-                                          fragmO      = fragmO_presmooth, 
-                                          K           = K_vec[i])
-      ##
-      Y_reconst_list[[i]]   <- result_tmp[['y_reconst']]
-      U_reconst_list[[i]]   <- result_tmp[['x_reconst']]
-      W_reconst_list[[i]]   <- result_tmp[['w_reconst']]*/
-
-      //riaggiungi nRegGrid l hai tolto senza motivo
-
-      /*if(!is.null(nRegGrid)){
-    ## Evaluate the reconstruced functions at a regular gird of length nRegGrid
-    xout <- seq(from = min(fpca_obj$argvals), to = max(fpca_obj$argvals), len=nRegGrid)
-    ##
-    for(i in 1:length(reconst_fcts)){ # i <- 1
-      if(all(is.na(Y_reconst_list[[i]]))){
-        Y_reconst_list[[i]]  <- rep(NA, length(xout))
-        U_reconst_list[[i]]  <- xout
-      } else {
-        Reconstr_on_RegGrid  <- stats::spline(y = Y_reconst_list[[i]], x = U_reconst_list[[i]], xout = xout)
-        Y_reconst_list[[i]]  <- Reconstr_on_RegGrid$y
-        U_reconst_list[[i]]  <- Reconstr_on_RegGrid$x
-      }
+  if(nRegGrid != 0)
+  {
+    Function spline = stats["spline"];
+    double start = m_Y_preprocessed.first[0];
+    double end = m_Y_preprocessed.first[m_Y_preprocessed.first.size()-1];
+    double step = (end - start)/(nRegGrid - 1);
+    NumericVector sequence(nRegGrid);
+    for (int i = 0; i < nRegGrid; ++i) {
+      sequence[i] = start + i * step;
     }
-    
-    
-    return(list(
-    "Y_reconst_list"  = Y_reconst_list,
-    "U_reconst_list"  = U_reconst_list,
-    "W_reconst_list"  = W_reconst_list,
-    "K"               = K_vec
-  ))*/
+    sequence = sequence * step + start;
+  
+    for(size_t i = 0; i < length_reconst_fcts; ++i)
+    {
+      NumericVector y = wrap(Y_reconstr_list[i]);
+      List reconstr_on_grid = spline(Named("y") = y, Named("x") = x, Named("xout") = sequence);
+      Y_reconstr_list[i] = reconstr_on_grid["y"];
+      U_reconst_list[i] = reconstr_on_grid["x"];
+    }
+  }
+  NumericVector K_vec_ = wrap(K_vec);
+  return List::create(Named("Y_reocnst_list") = Y_reconstr_list, Named("U_reconst_list") = U_reconst_list, 
+                      Named("W_reconst_list") = W_reconst_list, Named("K") = K_vec_);
 }
