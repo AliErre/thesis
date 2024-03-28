@@ -239,7 +239,7 @@ List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all 
 void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, const std::vector<std::vector<double>>& Lu, 
                                 bool scores = false, bool center = true, int max_bins = 1000, bool all = false){
   //int n = Ly.size();
-  std::vector<int> id_vec = generateIdVec(Ly);
+  std::vector<size_t> id_vec = gen(Lu);
   std::vector<std::tuple<int, double, double>> ydata;
   ydata.reserve(id_vec.size());//giusto
 
@@ -249,6 +249,12 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
     //id_vec 0-based per ora
     ydata.push_back(std::make_tuple(id_vec[i],unlist(Lu)[i],unlist(Ly)[i])); // .id,(time) .index, .value
   }
+  Rcout<<"ydata"<<std::endl;
+  for(const auto&t:ydata)
+  {
+    Rcout<<std::get<0>(t)<<"\t"<<std::get<1>(t)<<"\t"<<std::get<2>(t)<<std::endl;
+  }
+
   constexpr int nbasis = 10;//vedi se ha senso mettere qua constexpr
   max_bins = (max_bins == 0)? 1000 : max_bins; //cambia il default, non deve essere 0 ma NULL
   //bool useSymm = false;//se sono sempre false finsico sempre negli stessi branch
@@ -316,22 +322,35 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   id.shrink_to_fit();
 
   NumericMatrix Y_tilde(clone(Y.second)); //cercare se da altre parti avrei dovuto usare clone per la shallow copy
-  NumericVector yfirst(Y.first.begin(), Y.first.end());//t_points
+  NumericVector yfirst = wrap(Y.first);//t_points
+  Rcout<<"yfirst:"<<std::endl;
+  for(const auto& y:yfirst)
+  {
+    Rcout<<y<<"\t";
+  }
   NumericVector mu;
   if(center)
   {
-    NumericVector vec(Y.second.begin(),Y.second.end()); //as.vector, le NumericMatrix sono column major
+    Rcout<<"entered center"<<std::endl;
+    NumericMatrix Y_mat = Y.second;
+    NumericVector vec(Y_mat.begin(), Y_mat.end());
     Environment mgcv = Environment::namespace_env("mgcv");    
+    Rcout<<"imported namespace mgcv"<<std::endl;
     Function gam = mgcv["gam"];
     Function predict_gam = mgcv["predict.gam"];
 
-    NumericVector dvec(d_vec.begin(),d_vec.end()); //forse posso passare direttamente d_vec e chiamato in automatico wrap
+    NumericVector dvec = wrap(d_vec); //forse posso passare direttamente d_vec e chiamato in automatico wrap
 
     DataFrame data = DataFrame::create(Named("Y") = vec, Named("d.vec") = dvec);
-    List gam0 = gam(Formula("Y ~ s(d.vec, k = " + std::to_string(nbasis) + ")"), data);//lista di 3 S3 objects
+    std::string formula_str = "Y ~ s(d.vec, k = " + std::to_string(nbasis) + ")";
+    Formula f = Formula(formula_str);
+
+    List gam0 = gam(Named("formula") = f, Named("data") = data);
+    Rcout<<"called gam function"<<std::endl;
 
     DataFrame newdata = DataFrame::create(Named("d.vec") = yfirst);
     mu = predict_gam(gam0, Named("newdata") = newdata);
+    Rcout<<"called predict_gam function"<<std::endl;
 
     
     for (int row = 0; row < i; ++row) {
@@ -347,6 +366,7 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov
   std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
+  Rcout<<"called smooth_cov and returned"<<std::endl;
   NumericMatrix npc0 = cov_smooth.first;
   NumericVector diagG0 = cov_smooth.second;
   //numerical integration for calculation of eigenvalues (see Ramsay & Silverman, Ch. 8)
@@ -372,6 +392,7 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
 
 List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, const NumericVector& t_points = NumericVector(), int K = 0, int maxBins = 0, int nRegGrid = 0)
 { 
+  Rcout<<"Im KLAL"<<std::endl;
   int n = m_Y.ncol();
   int r = m_Y.nrow();
   std::vector<std::vector<double>> Y_list(n);
@@ -409,7 +430,7 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
   //myfpca setta dei data member. reonstructCurve() non può essere const
   myfpca(Y_list, U_list, false, true, maxBins, all);//ultimo false vuol dire che non deve ricostruire tutto
 
-  int length_reconst_fcts = m_obs_argvalsO.length();//per come è stata costruita in eigen è di dimensione pari a lunghezza reconst_fcts
+  size_t length_reconst_fcts = m_obs_argvalsO.length();//per come è stata costruita in eigen è di dimensione pari a lunghezza reconst_fcts
   std::vector<double> K_vec;
   K_vec.reserve(length_reconst_fcts);
   List Y_reconstr_list(length_reconst_fcts);
@@ -417,7 +438,7 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
   List U_reconst_list(length_reconst_fcts);
   Environment stats = Environment::namespace_env("stats");
   NumericVector x = wrap(m_Y_preprocessed.first);
-  for(int i = 0; i < length_reconst_fcts; ++i){
+  for(size_t i = 0; i < length_reconst_fcts; ++i){
     arma::vec obs = m_obs_argvalsO[i];
     std::vector<double> argvalsO_i = m_observed_period[i];//è argvalsO[i] in R
     if(!(obs[0] == argvalsO_i[0] && obs[obs.size()-1] == argvalsO_i[argvalsO_i.size()-1]))
@@ -440,7 +461,10 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
 
     Function smooth_spline = stats["smooth.spline"];
     List smooth_fit = smooth_spline(Named("y") = y_c, Named("x") = obs_argvals);
+    Rcout<<"called stats::smooth_spline in reconstructCurve()"<<std::endl;
+
     Function predict = stats["predict"];
+    Rcout<<"called predict in reconstructCurve()"<<std::endl;
     List fragmO_presmooth_list = predict(smooth_fit, argvalsO_i_vector);
     NumericVector fragmO_presmooth = fragmO_presmooth_list[2];
 

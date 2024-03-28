@@ -3,11 +3,11 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
-// [[Rcpp::export]]
 List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, 
                    const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k,
                    const arma::vec& evaluesO = arma::vec(), const std::vector<double>& argvalsO = std::vector<double>(), const arma::mat& cov = arma::mat())
 {
+  Rcout<<"reconstKL_fun"<<std::endl;
   //non so se esportarla, o se la esporto devo avere a disposzione tutti sti dati comunque
   int K = std::min(k, efunc_r.ncol());
   arma::mat efunc_r_arma = as<arma::mat>(efunc_r);
@@ -76,9 +76,10 @@ find_complete_tuple(const std::vector<std::tuple<int, double, double>>& y_data)
 
 //irreg2mat <- function(ydata, binning = FALSE, maxbins = 1000)
 std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tuple<int, double, double>>& y_data, 
-                                             bool binning, int max_bins){
+                                                       bool binning, int max_bins){
 
   //crea una copia
+  Rcout<<"irreg2mat"<<std::endl;
   std::vector<std::tuple<int, double, double>> y_data_complete(find_complete_tuple(y_data));
   std::set<double> bins; 
 
@@ -92,8 +93,20 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   //ids sarà già ordinato, non c'è bisogno di chiamare sort
   int nobs = std::distance(ids.begin(),std::unique(ids.begin(),ids.end()));//corretto
   bool condition = binning && bins.size() > static_cast<size_t>(max_bins);//false
-  std::vector<double> binvalues = make_bins(bins, max_bins,condition);//bins sarà modificato, chiamo make_bins con la reference
+  std::vector<double> binvalues = make_bins(bins, max_bins, condition);//bins sarà modificato, chiamo make_bins con la reference
   //associa a std::get<1>(t) un bin => crea classi di .index
+  Rcout<<"binvalues \t";
+  for(const auto&bb:binvalues)
+  {
+    Rcout<<bb<<"\t";
+  }
+
+  Rcout<<std::endl; Rcout<<"bins_set"<<"\t";
+  for(const auto&b:bins)
+  {
+    Rcout<<b<<"\t";
+  }
+
 
   //estrai vettore dal secondo elemento della tupla
   std::vector<double> index_vector;
@@ -106,12 +119,6 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
 
   std::vector<std::pair<double, double>> classes = cut(index_vector, bins);//this is newindex in R
   //associate each class to a column index
-  //index classes by the ranking of their lower bound
-  /*std::vector<std::pair<double,double>> sorted_classes(classes.begin(), classes.end());
-  std::sort(sorted_classes.begin(),sorted_classes.end(),[](const std::pair<double, double>& a, const std::pair<double, double>& b)
-                                                        { return a.first < b.first;});
-                                                        //lambda specifies criterium to order: order on lower bound
-  */
   std::set<std::pair<double,double>> sorted_classes(classes.begin(),classes.end());
   //associate index
   std::vector<int> column_indices(classes.size()); //vedi se trasformare in size_t       
@@ -120,9 +127,6 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
       auto it = std::find(sorted_classes.begin(), sorted_classes.end(), classes[i]);//lo trova per forza. find su un vettore restituisce iteratore
       column_indices[i] = std::distance(sorted_classes.begin(), it);
   }
-
-  //ora costruisci Y(ids[i],column_index[i]) = y_data_complete[i];
-  //controlla di aver costruito ids e column_index a partire da y_data_complete
   //inizializza ad NA_REAL, alcune curve non hanno ossservazioni in dati bins
   NumericMatrix Y(nobs, bins.size()-1);
   Y.fill(NA_REAL);
@@ -132,6 +136,10 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   }
 
   std::pair<std::vector<double>,NumericMatrix> Y_bins = std::make_pair(binvalues,Y);//binvalues is colnames(Y)
+  Rcout<<"irreg2mat: Y.first"<<std::endl;
+  for(const auto& y:Y_bins.first){
+      Rcout<<y<<"\t";
+  }
   return Y_bins;
   
 }
@@ -140,11 +148,12 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
 std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,const NumericMatrix& Y_tilde,const NumericVector& Y_first,
                          int d, int i, int nbasis)
 {
+  Rcout<<"smooth_cov"<<std::endl;
   NumericMatrix cov_mean(d, d);
   NumericMatrix cov_count(d,d);
-  std::fill(cov_count.begin(),cov_count.end(),0.0);
+  cov_count.fill(0.0);
   NumericMatrix cov_sum(d,d);
-  std::fill(cov_sum.begin(),cov_sum.end(),0.0);
+  cov_sum.fill(0.0);
 
 
   // Calculate cov.mean
@@ -191,12 +200,12 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
 
   // Calculate npc.0
   NumericVector row_vec(d * Y_first.size());
-  for(int i = 0; i < Y_first.size();++i)
-  {
-    for(int j = 0; j < d; ++j)
-    row_vec[j] = Y_first[i];
+  int index = 0;
+  for(const auto& y : Y_first) {
+    for(int j = 0; j < d; ++j) {
+      row_vec[index++] = y;
+    }
   }
-
 
   NumericVector col_vec(Y_first.size() * d);
   for(int i = 0; i < d; ++i) {
@@ -208,15 +217,16 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
   Function predict_gam = mgcv["predict.gam"];
   NumericVector g0(G0.begin(),G0.end());
   NumericVector weights(cov_count.begin(),cov_count.end());
+  std::string formula = "G0 ~ te(row_vec, col_vec, k = " + std::to_string(nbasis) + ")";
+  Formula f = Formula(formula);
+  DataFrame data = DataFrame::create(_["G0"] = g0, _["row_vec"] = row_vec, _["col_vec"] = col_vec, _["weights"] = weights);
+  //stop("before fitting gam");
+  List gamModel = gam(_["formula"] = f, _["data"] = data);//fit gam model
+  Rcout<<"fitted gam model in smooth_cov"<<std::endl;
+  DataFrame newdata = DataFrame::create(Named("row_vec") = row_vec, Named("col_vec") = col_vec);//data for prediction
 
-  DataFrame gamData = DataFrame::create(Named("G0") = g0, 
-                                        Named("row_vec") = row_vec, 
-                                        Named("col_vec") = col_vec, 
-                                        Named("weights") = weights);
-  
-  List gamModel = gam(Formula("G0 ~ te(row_vec, col_vec, k = " + std::to_string(nbasis) + ")"), gamData, _["weights"] = weights);//fit gam model
-  DataFrame newdata = DataFrame::create(Named("row.vec") = row_vec, Named("col.vec") = col_vec);//data for prediction
   NumericVector predictions = predict_gam(gamModel, _["newdata"] = newdata);
+  Rcout<<"predict_gam in smooth_cov"<<std::endl;
 
   //reshape predictions vector into matrix
   NumericMatrix npc0(d, d);
@@ -289,6 +299,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
            double pev, const NumericMatrix& Y_pred, 
            const NumericVector& mu, const NumericVector& diagG0, bool CEScores, const IntegerVector& reconst_fcts) {
   
+  Rcout<<"eigen"<<std::endl;
   // numerical integration for calculation of eigenvalues
   std::vector<double> w = quadWeights(argvals);//default is trapezioidal
   arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
@@ -330,7 +341,12 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   auto it = std::lower_bound(argvals.begin(), argvals.end(), lower_bound);
   int T1_min = std::distance(argvals.begin(), it); //in R which returns an index
 
-  double upper_bound = argvals[argvals.size()] - 0.25 * T_len;
+  double upper_bound = argvals[argvals.size() - 1] - 0.25 * T_len;
+  Rcout<<"upper bound"<<upper_bound;
+  for(const auto& a:argvals)
+  {
+    Rcout<<a<<"\t";
+  }
   auto it_max = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
   if(it_max != argvals.begin())
   {
@@ -339,8 +355,12 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
   int T1_max = std::distance(argvals.begin(), it_max);// = 0 se sono tutti maggiori di upper_bound. Ma non dovrebbe succedee
   arma::vec diag_diff = as<arma::vec>(diagG0) - arma::diagvec(cov_est);
-  arma::vec sub_diag = diag_diff.rows(T1_min, T1_max);
-  std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max);
+  Rcout<<"T1min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
+  arma::vec sub_diag = diag_diff.subvec(T1_min, T1_max);
+  std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max + 1);
+  Rcout<<"length subset"<<argvals_subset.size()<<std::endl;
+  for(const auto& a:argvals_subset)
+  {Rcout<<a<<"\t";}
   std::vector<double> w2 = quadWeights(argvals_subset);//default: trapezioidal
 
   //sigma
@@ -369,6 +389,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
     // CovOO
     arma::mat VO = Wsqrt * cov_est.submat(locO,locO) * Wsqrt;
+    Rcout<<"dimensioni ok"<<std::endl;
     arma::vec evaluesO;
     arma::mat eigenvectorsO;
     arma::eig_sym(evaluesO, eigenvectorsO, VO);
@@ -392,6 +413,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     }
 
     arma::mat efunctionsO_i = Winvsqrt * eigenvectorsO.cols(0, npcO);
+    Rcout<<"dimensioni ok 2"<<std::endl;
     arma::vec evaluesO_i = evaluesO.subvec(0, npcO);
 
     arma::mat D_inv = arma::diagmat(1/evaluesO_i);
@@ -418,6 +440,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       arma::mat Zcur = Z.submat(arma::span(obs_locO[0],obs_locO[obs_locO.size()-1]),arma::span(0, npcO - 1*CEScores*size));//controlla
       arma::mat ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO - 1*CEScores*size),arma::span(0, npcO - 1*CEScores*size)));
       arma::vec CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * Y_cent_arma(no_na);//arma::vec sono vettori colonna
+      Rcout<<"dimensioni ok 3"<<std::endl;
       CE_scoresO[i] = CE_scoresO_i;
     } else {
       CE_scoresO[i] = NA_REAL;
@@ -428,8 +451,10 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     {
       arma::vec column = efunctionsO_i_sub.col(j);
       double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);
+      Rcout<<"came back from trapezioidal_rule"<<std::endl;
       scoresO[i] = integral;
     }
+    Rcout<<"definitivo"<<std::endl;
 
     //reconstructive eigenfunctions
     NumericMatrix efun_reconst_i(argvals.size(), npcO + 1*(!true));
@@ -439,6 +464,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       NumericVector c = efun_reconst_i(_,k);
       arma::vec c_arma = as<arma::vec>(c);
       double integral = trapezioidal_rule(efunctionsO_i.col(k) % c_arma, arma::conv_to<arma::vec>::from(argvalsO[i]));
+      Rcout<<"came back from trapezioidal rule 2"<<std::endl;
       for(int r = 0; r < efun_reconst_i.nrow(); ++r)
        efun_reconst_i(r,k) = integral/evaluesO_i[k];
     }
@@ -477,6 +503,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
                   const std::vector<double>& argvalsO_i, const NumericVector& muO, const arma::uvec& locO,
                   const arma::mat& cov_est, double sigma2, const std::string& method, double pev)
 {
+  Rcout<<"gcvkl"<<std::endl;
   NumericMatrix Y(clone(Y_preprocessed.second));
   std::vector<int> complete_rows;
   complete_rows.reserve(Y.nrow());
@@ -598,8 +625,10 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       Function smooth_spline = stats["smooth.spline"];
       //smooth splines
       List smooth_fit = smooth_spline(Named("y") = y, Named("x") = x);//S3 object
+      Rcout<<"smooth_spline in  gcv"<<std::endl;
       Function predict = stats["predict"];
       List result = predict(smooth_fit, x);//dubbi
+      Rcout<<"predict in gcv"<<std::endl;
       fragmO_presmooth = result[2];
     }
     arma::mat Zcur, ZtZ_sD_inv; arma::vec CE_scoresO_i, CE_scoresO;

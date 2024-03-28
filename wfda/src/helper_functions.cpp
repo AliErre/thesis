@@ -1,5 +1,51 @@
 #include "helper_functions.h"
 
+std::vector<size_t> gen(const std::vector<std::vector<double>>& Lu)
+{
+  size_t count = 0;
+  std::vector<size_t> vec;
+  for(const auto& L:Lu)
+  {
+    for(const auto& l:L)
+    {
+      if (l == 0.0){count++;}
+      vec.push_back(count-1);
+    }
+  }
+  return vec;
+}
+std::vector<size_t> generateIdVec(const std::vector<std::vector<double>>& Ly) {
+    for(const auto& L:Ly)
+    {
+      for(const auto& l:L)
+        Rcout<<l<<"\t";
+      Rcout<<std::endl;
+    }
+    std::vector<size_t> id_vec;
+    size_t total_size = 0;
+
+    // Calculate the total size needed for id_vec
+    for (size_t i = 0; i < Ly.size(); ++i) {
+        total_size += Ly[i].size();
+    }
+
+    // Reserve memory for id_vec
+    id_vec.reserve(total_size);
+
+    for (size_t i = 0; i < Ly.size(); ++i) {
+        for (size_t j = 0; j < Ly[i].size(); ++j) {
+            id_vec.push_back(i); // Assigning identifiers based on the index of the outer vector
+            Rcout<<i<<"\t";
+        }
+    }
+    for(const auto&id: id_vec)
+    {
+      Rcout<<id<<"\t";
+    }
+    return id_vec;
+}
+
+
 void filter(std::vector<double>& values, const double& a) {
     for (size_t i = 0; i < values.size() - 1; ++i) { // Skip the last element
         values[i] = a * values[i] + (1 - a) * values[i + 1];
