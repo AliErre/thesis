@@ -279,8 +279,7 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   int row = 0;
   for(const auto& index: reconst_fcts)
   {
-    Y_pred(row,_) = Y.second(index,_);
-    ++row;
+    Y_pred(row++,_) = Y.second(index,_);
   }
 
   std::vector<std::vector<double>> observed_period; //argvalsO
@@ -300,18 +299,31 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   }
 
   m_observed_period = observed_period;
+  /*Rcout<<"argvalsO"<<std::endl;
+  for(const auto& a:m_observed_period)
+  { Rcout<<"argvalsO_i: \t";
+    for(const auto& b:a)
+      Rcout<<b<<"\t";
+    Rcout<<std::endl;
+  }*/
 
   //argvals = Y.first
       
   std::vector<double> d_vec;
   d_vec.reserve(i * d); 
-  for (int j = 0; j < i; ++j) {
-    for (const double& val : Y.first) {//Y.first = argvals = t.points .....
+  for (const double& val : Y.first) {
+    for (int j = 0; j < i; ++j) {//Y.first = argvals = t.points .....  
         d_vec.push_back(val);        
     }
   }
   d_vec.shrink_to_fit();//non servirebbe
 
+  /*Rcout<<"dvec \t";
+  for(const auto&d:d_vec)
+  {
+    Rcout<<d<<"\t";
+  }
+  Rcout<<std::endl;*/
   std::vector<int> id;
   id.reserve(i * d); 
   for (int j = 0; j < i; ++j) {//controlla che non sia da j = 1 a j = i, ma solo perchè devo capire se servono gli indici di R o C++, penso C++
@@ -321,19 +333,36 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   }
   id.shrink_to_fit();
 
+  /*Rcout<<"id \t";
+  for(const auto&ii:id)
+  {
+    Rcout<<ii<<"\t";
+  }
+  Rcout<<std::endl;*/
   NumericMatrix Y_tilde(clone(Y.second)); //cercare se da altre parti avrei dovuto usare clone per la shallow copy
   NumericVector yfirst = wrap(Y.first);//t_points
-  Rcout<<"yfirst:"<<std::endl;
+  /*Rcout<<"yfirst:"<<std::endl;
   for(const auto& y:yfirst)
   {
     Rcout<<y<<"\t";
-  }
+  }*/
   NumericVector mu;
   if(center)
   {
     Rcout<<"entered center"<<std::endl;
     NumericMatrix Y_mat = Y.second;
+    Rcout<<"Y_mat"<<std::endl;
+    for(int i = 0; i < Y_mat.nrow();++i)
+    {
+      for(int j = 0; j < Y_mat.ncol(); ++j)
+        Rcout<<Y_mat(i,j)<<" ";
+      Rcout<<std::endl;
+    }
     NumericVector vec(Y_mat.begin(), Y_mat.end());
+    Rcout<<"as.vector(Y)"<<std::endl;
+    for(const auto&v:vec)
+      Rcout<<v<<"\t";
+    Rcout<<std::endl;
     Environment mgcv = Environment::namespace_env("mgcv");    
     Rcout<<"imported namespace mgcv"<<std::endl;
     Function gam = mgcv["gam"];
@@ -362,6 +391,12 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
     mu = NumericVector(d,0.0);
   }
   m_mu = mu;
+  Rcout<<"mu \t";
+  for(const auto&m:mu)
+  {
+    Rcout<<m<<"\t";
+  }
+  Rcout<<std::endl;
   //ho debuggato fino a qua
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov

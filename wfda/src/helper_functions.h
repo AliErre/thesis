@@ -16,20 +16,7 @@ template<typename T>
 std::vector<T> replicate(const T& val, size_t n) {
     return std::vector<T>(n, val);
 }
-
-template<typename T>
-std::vector<int> generateIdVec(const std::vector<std::vector<T>>& Ly) {
-    std::vector<int> id_vec;
-    for (size_t i = 0; i < Ly.size(); ++i) {
-        id_vec.reserve(id_vec.size() + Ly[i].size());
-        for (size_t j = 0; j < Ly[i].size(); ++j) {
-            id_vec.push_back(static_cast<int>(i)); //(i+1)? to id_vec
-        }
-    }
-    id_vec.shrink_to_fit();//non necessario credo
-    return id_vec;
-}
-
+std::vector<size_t> gen(const std::vector<std::vector<double>>& Lu);
 //equivalent to R's unlist() function
 template<typename T>
 std::vector<T> unlist(const std::vector<std::vector<T>>& vec)
@@ -58,4 +45,5 @@ std::vector<double> make_bins(std::set<double>&, int, bool);
 std::vector<std::pair<double,double>> cut(const std::vector<double>& y_data_index, const std::set<double> breaks);
 
 
+std::vector<size_t> generateIdVec(const std::vector<std::vector<double>>& Ly);
 #endif

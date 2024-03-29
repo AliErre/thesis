@@ -90,22 +90,25 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
     ids.push_back(std::get<0>(t));//newid. deve essere il vettore di indici di riga di Y
     bins.insert(std::get<1>(t));
   }//bins è per forza uguale a t_points
+
   //ids sarà già ordinato, non c'è bisogno di chiamare sort
-  int nobs = std::distance(ids.begin(),std::unique(ids.begin(),ids.end()));//corretto
+  std::vector<int> ids_copy = ids;//necessità copia perché std::unique modifica il vettore
+  int nobs = std::distance(ids_copy.begin(),std::unique(ids_copy.begin(),ids_copy.end()));//corretto
   bool condition = binning && bins.size() > static_cast<size_t>(max_bins);//false
   std::vector<double> binvalues = make_bins(bins, max_bins, condition);//bins sarà modificato, chiamo make_bins con la reference
+
   //associa a std::get<1>(t) un bin => crea classi di .index
-  Rcout<<"binvalues \t";
+  /*Rcout<<"binvalues \t";
   for(const auto&bb:binvalues)
   {
     Rcout<<bb<<"\t";
-  }
+  }*/
 
-  Rcout<<std::endl; Rcout<<"bins_set"<<"\t";
+  /*Rcout<<std::endl; Rcout<<"bins_set"<<"\t";
   for(const auto&b:bins)
   {
     Rcout<<b<<"\t";
-  }
+  }*/
 
 
   //estrai vettore dal secondo elemento della tupla
@@ -127,6 +130,18 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
       auto it = std::find(sorted_classes.begin(), sorted_classes.end(), classes[i]);//lo trova per forza. find su un vettore restituisce iteratore
       column_indices[i] = std::distance(sorted_classes.begin(), it);
   }
+  /*Rcout<<"ids \t";//sono sbagliati per prima riga x seconda terza quarta colonna
+  for(const auto& indice:ids)
+  {
+    Rcout<<indice<<" ";
+  }
+  Rcout<<std::endl;
+  Rcout<<"column_indices \t";//sono giusti
+  for(const auto& column:column_indices)
+  {
+    Rcout<<column<<" ";
+  }
+  Rcout<<std::endl;*/
   //inizializza ad NA_REAL, alcune curve non hanno ossservazioni in dati bins
   NumericMatrix Y(nobs, bins.size()-1);
   Y.fill(NA_REAL);
@@ -136,10 +151,10 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   }
 
   std::pair<std::vector<double>,NumericMatrix> Y_bins = std::make_pair(binvalues,Y);//binvalues is colnames(Y)
-  Rcout<<"irreg2mat: Y.first"<<std::endl;
+  /*Rcout<<"irreg2mat: Y.first"<<std::endl;
   for(const auto& y:Y_bins.first){
       Rcout<<y<<"\t";
-  }
+  }*/
   return Y_bins;
   
 }
@@ -206,6 +221,12 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
       row_vec[index++] = y;
     }
   }
+  /*Rcout<<"length row_vec: "<<row_vec.size()<<std::endl;
+  for(const auto&r:row_vec)
+  {
+    Rcout<<r<<"\t";
+  }
+  Rcout<<std::endl;*/
 
   NumericVector col_vec(Y_first.size() * d);
   for(int i = 0; i < d; ++i) {
@@ -257,7 +278,7 @@ std::vector<double> quadWeights(const std::vector<double>& argvals, const std::s
         }
         ret[D - 1] = 0.5 * (argvals[D - 1] - argvals[D - 2]);
     } else if (method == "midpoint") {
-        ret[0] = 0.0; // Assuming the first weight for midpoint is 0 as in the R example
+        ret[0] = 0.0; 
         for (int i = 1; i < D; i++) {
             ret[i] = argvals[i] - argvals[i - 1];
         }
@@ -342,7 +363,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   int T1_min = std::distance(argvals.begin(), it); //in R which returns an index
 
   double upper_bound = argvals[argvals.size() - 1] - 0.25 * T_len;
-  Rcout<<"upper bound"<<upper_bound;
+  Rcout<<"upper bound "<<upper_bound;
   for(const auto& a:argvals)
   {
     Rcout<<a<<"\t";
@@ -355,10 +376,10 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
   int T1_max = std::distance(argvals.begin(), it_max);// = 0 se sono tutti maggiori di upper_bound. Ma non dovrebbe succedee
   arma::vec diag_diff = as<arma::vec>(diagG0) - arma::diagvec(cov_est);
-  Rcout<<"T1min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
+  Rcout<<"T1_min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
   arma::vec sub_diag = diag_diff.subvec(T1_min, T1_max);
   std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max + 1);
-  Rcout<<"length subset"<<argvals_subset.size()<<std::endl;
+  Rcout<<"length subset "<<argvals_subset.size()<<std::endl;
   for(const auto& a:argvals_subset)
   {Rcout<<a<<"\t";}
   std::vector<double> w2 = quadWeights(argvals_subset);//default: trapezioidal
@@ -484,15 +505,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   //mancano cose da ritornare a myfpca
   //vedi se settare data member poi da myfpca a seconda dell uso che ne deve fare KLAl
   return std::make_tuple(muO, scoresO, CE_scoresO, efunctions, efunctionsO,
-                        efun_reconst, evalues, evaluesOO, obs_argvalsO, locOO,sigma2, cov_est);/*List::create(Named("muO") = muO,
-                      Named("scoresO") = scoresO,
-                      Named("CE_scoresO") = CE_scoresO,
-                      Named("efunctions") = efunctions,
-                      Named("efunctionsO") = efunctionsO,
-                      Named("efun_reconst") = efun_reconst,
-                      Named("evalues") = evalues,
-                      Named("evaluesO") = evaluesOO,
-                      Named("sigma2") = sigma2);*/
+                        efun_reconst, evalues, evaluesOO, obs_argvalsO, locOO,sigma2, cov_est);
                       
 }
 
