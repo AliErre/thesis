@@ -444,10 +444,10 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
   double upper_bound = argvals[argvals.size() - 1] - 0.25 * T_len;
   Rcout<<"upper bound "<<upper_bound;
-  for(const auto& a:argvals)
+  /*for(const auto& a:argvals)
   {
     Rcout<<a<<"\t";
-  }
+  }*/
   auto it_max = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
   if(it_max != argvals.begin())
   {
@@ -459,20 +459,21 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   Rcout<<"T1_min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
   arma::vec sub_diag = diag_diff.subvec(T1_min, T1_max);
   std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max + 1);
-  Rcout<<"length subset "<<argvals_subset.size()<<std::endl;
-  for(const auto& a:argvals_subset)
-  {Rcout<<a<<"\t";}
+  //Rcout<<"length subset "<<argvals_subset.size()<<std::endl;
+  /*for(const auto& a:argvals_subset)
+  {Rcout<<a<<"\t";}*/
   std::vector<double> w2 = quadWeights(argvals_subset);//default: trapezioidal
-  Rcout<<"w2: "<<std::endl;
+  /*Rcout<<"w2: "<<std::endl;
   for(const auto& ww:w2)
   {
     Rcout<<ww<<" ";
   }
-  Rcout<<std::endl;
+  Rcout<<std::endl;*/
 
   //sigma
-  double sigma2 = std::max(weighted_mean(argvals_subset, w2), 0.0);//lei aveva messo na.rm ma secondo me non dovrebbero esserci NA
-  Rcout<<"sigma2: "<<sigma2<<std::endl;
+  std::vector<double> sub_diag_vec(sub_diag.begin(), sub_diag.end());
+  double sigma2 = std::max(weighted_mean(sub_diag_vec, w2), 0.0);//lei aveva messo na.rm ma secondo me non dovrebbero esserci NA
+  //Rcout<<"sigma2: "<<sigma2<<std::endl;
   //computations for observed fragments
   //cambia queste definizioni NOTA BENE NOTA BENE NOTA BENE?
   List muO(reconst_fcts.size()), scoresO(reconst_fcts.size()), CE_scoresO(reconst_fcts.size()),
@@ -483,6 +484,11 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   for (int i = 0; i < reconst_fcts.size(); ++i) {//argvalsO should be of size reconst_fcts (observed_period in myfpca)
     // Numerical integration for calculation of eigenvalues
     std::vector<double> w = quadWeights(argvalsO[i]);
+    for(const auto& ww:w)
+    {
+      Rcout<<ww<<" ";
+    }
+    Rcout<<std::endl;
     arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
     arma::mat Wsqrt = arma::diagmat(arma::sqrt(w_arma));
     arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));
@@ -496,10 +502,13 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
     // CovOO
     arma::mat VO = Wsqrt * cov_est.submat(locO,locO) * Wsqrt;
-    Rcout<<"dimensioni ok"<<std::endl;
+    //Rcout<<"dimensioni ok"<<std::endl;
     arma::vec evaluesO;
     arma::mat eigenvectorsO;
     arma::eig_sym(evaluesO, eigenvectorsO, VO);
+    arma::uvec sort_indices = arma::sort_index(evaluesO, "desc");
+    evaluesO = evaluesO(sort_indices);
+    eigenvectorsO = eigenvectorsO.cols(sort_indices);
     evaluesO.transform([](double val){ return val <= 0 ? 0.0 : val;});
     size_t npcO = arma::sum(evaluesO > 0);
     if(npcO == 0){stop("no eigen values greater than 0");}else{npcO--;}
@@ -520,7 +529,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     }
 
     arma::mat efunctionsO_i = Winvsqrt * eigenvectorsO.cols(0, npcO);
-    Rcout<<"dimensioni ok 2"<<std::endl;
+    //Rcout<<"dimensioni ok 2"<<std::endl;
     arma::vec evaluesO_i = evaluesO.subvec(0, npcO);
 
     arma::mat D_inv = arma::diagmat(1/evaluesO_i);
@@ -536,6 +545,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     arma::uvec no_na = arma::find_finite(Y_cent_arma);
     // Calculate CE_scoresO
     bool size = false;
+    Rcout<<"CE_scoresO: ";
     if (CEScores) {
       if (sigma2 == 0) {
         sigma2 = 1e-6;
@@ -547,10 +557,12 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       arma::mat Zcur = Z.submat(arma::span(obs_locO[0],obs_locO[obs_locO.size()-1]),arma::span(0, npcO - 1*CEScores*size));//controlla
       arma::mat ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO - 1*CEScores*size),arma::span(0, npcO - 1*CEScores*size)));
       arma::vec CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * Y_cent_arma(no_na);//arma::vec sono vettori colonna
-      Rcout<<"dimensioni ok 3"<<std::endl;
-      CE_scoresO[i] = CE_scoresO_i;
+      //Rcout<<"dimensioni ok 3"<<std::endl;
+      CE_scoresO[i] = CE_scoresO_i; //corretto a meno di un segno
+      Rcout<<CE_scoresO_i<<" ";
     } else {
       CE_scoresO[i] = NA_REAL;
+      Rcout<<NA_REAL<<" ";
     }
 
     arma::mat efunctionsO_i_sub = efunctionsO_i.rows(obs_locO);
@@ -558,20 +570,21 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     {
       arma::vec column = efunctionsO_i_sub.col(j);
       double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);
-      Rcout<<"came back from trapezioidal_rule"<<std::endl;
+      //Rcout<<"came back from trapezioidal_rule"<<std::endl;
       scoresO[i] = integral;
     }
-    Rcout<<"definitivo"<<std::endl;
+    //Rcout<<"definitivo"<<std::endl;
 
     //reconstructive eigenfunctions
     NumericMatrix efun_reconst_i(argvals.size(), npcO + 1*(!true));
+    //Rcout<<"nrow efunc_reoconst_i: "<<efun_reconst_i.nrow()<<" ncol: "<<efun_reconst_i.ncol()<<" ";
     efun_reconst_i.fill(NA_REAL);
     for(int k = 0; k < efun_reconst_i.ncol(); ++k)
     {
-      NumericVector c = efun_reconst_i(_,k);
-      arma::vec c_arma = as<arma::vec>(c);
-      double integral = trapezioidal_rule(efunctionsO_i.col(k) % c_arma, arma::conv_to<arma::vec>::from(argvalsO[i]));
-      Rcout<<"came back from trapezioidal rule 2"<<std::endl;
+      arma::mat rows = cov_est.rows(locO);
+      arma::vec c = rows.col(k);
+      double integral = trapezioidal_rule(efunctionsO_i.col(k) % c, arma::conv_to<arma::vec>::from(argvalsO[i]));
+      //Rcout<<"came back from trapezioidal rule 2"<<std::endl;
       for(int r = 0; r < efun_reconst_i.nrow(); ++r)
        efun_reconst_i(r,k) = integral/evaluesO_i[k];
     }
