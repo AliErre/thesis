@@ -664,6 +664,9 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   arma::vec evaluesO;  //in realtà evaluesO ed eigenvectorsO dovrei averceli già nei data member, devo passarli a gcv
   arma::mat eigenvectorsO;
   arma::eig_sym(evaluesO, eigenvectorsO, VO);//se li passo posso saltare questa parte
+  arma::uvec sort_indices = arma::sort_index(evaluesO, "desc");
+  evaluesO = evaluesO(sort_indices);
+  eigenvectorsO = eigenvectorsO.cols(sort_indices);
   evaluesO.transform([](double val){ return val <= 0 ? 0.0 : val;});
   size_t npcO = arma::sum(evaluesO > 0);
   if(npcO == 0){stop("no eigenvalues greater than 0");}else{npcO--;};//vedi se togliere 1, ricontrolla anche se in eigen ha senso
@@ -690,9 +693,9 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   efun_reconst_i.fill(NA_REAL);
   for(int k = 0; k < efun_reconst_i.ncol(); ++k)
   {
-    NumericVector c = efun_reconst_i(_,k);
-    arma::vec c_arma = as<arma::vec>(c);
-    double integral = trapezioidal_rule(efunctionsO_i.col(k) % c_arma, arma::conv_to<arma::vec>::from(argvalsO_i));
+    arma::mat rows = cov_est.rows(locO);
+    arma::vec c = rows.col(k);
+    double integral = trapezioidal_rule(efunctionsO_i.col(k) % c, arma::conv_to<arma::vec>::from(argvalsO_i));
     for(int r = 0; r < efun_reconst_i.nrow(); ++r)
       efun_reconst_i(r,k) = integral/evaluesO_i[k];
   }
@@ -723,8 +726,9 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       y_cent_arma[u] = (Y_cent[u]-mu[u]);//vedere se a mu puoi accedere con uword
     }
     NumericVector fragmO_presmooth;//rimane empty se non entra in KLAl4
-    if(method == "KLAl4")
+    if(method == "KLAl4")//else è KLAl5 e lo salta
     {
+      Rcout<<"if"<<std::endl;
       NumericVector y;
       
       NumericVector x = wrap(argvalsO_i); //argvalsO_i[obs_locO] = argvalsO_i per costruzione!
@@ -739,10 +743,11 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       List smooth_fit = smooth_spline(Named("y") = y, Named("x") = x);//S3 object
       Rcout<<"smooth_spline in  gcv"<<std::endl;
       Function predict = stats["predict"];
-      List result = predict(smooth_fit, x);//dubbi
+      List result = predict(smooth_fit, _["x"] = x);
       Rcout<<"predict in gcv"<<std::endl;
-      fragmO_presmooth = result[2];
+      fragmO_presmooth = result["y"];//si deve accedere così ai campi di una lista
     }
+    
     arma::mat Zcur, ZtZ_sD_inv; arma::vec CE_scoresO_i, CE_scoresO;
     if(method == "KLAl4" || method == "KLAl5")
     {
@@ -760,9 +765,16 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       }
       for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro e parte da 1, io avevo usato npcO come indice quindi tolto 1
       {
+        Rcout<<"for"<<std::endl;
         List result_tmp = reconstKL_fun(mu, argvals, locO, 
                                         CE_scoresO, efun_reconst_i, fragmO_presmooth, k);
         arma::vec y_reconst = result_tmp["y_reconst"];
+        Rcout<<"y_reconst: ";
+        for(const auto& rr:y_reconst)
+        {
+          Rcout<<rr<<" ";
+        }
+        Rcout<<std::endl;
         double sum = 0.0;
         for(const auto&m : locM)
         {
@@ -773,6 +785,13 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
 
     }
   }//end for
+  Rcout<<"rss_mat: ";
+  for(int i = 0; i < rss_mat.nrow(); ++i)
+  {
+    for(int j = 0; j < rss_mat.ncol(); ++j)
+      Rcout<<rss_mat(i,j)<<" ";
+    Rcout<<std::endl;
+  }
   std::vector<double> gcv_k_vec; gcv_k_vec.reserve(npcO+1);
   for(size_t i = 0; i < npcO + 1; ++i)
   {
@@ -784,6 +803,12 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
     double denom = (1-(i+1)/Y_pred.nrow()) * (1-(i+1)/Y_pred.nrow());//ncompl = Y_pred.nrow()
     gcv_k_vec.push_back(sum/denom);
   }
+  Rcout<<"gcv vec: ";
+  for(const auto& g:gcv_k_vec)
+  {
+    Rcout<<g<<" ";
+  }
+  stop("initialized gcv vector");
 
   auto it_min = std::min_element(gcv_k_vec.begin(), gcv_k_vec.end());
   auto index_min = std::distance(gcv_k_vec.begin(), it_min);

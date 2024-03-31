@@ -494,7 +494,7 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
     
     if(K == 0)//per ora ho dato il default a 0, ma poi mettere Nullable
     {
-      std::string method = "KlAl4";
+      std::string method = "KLAl4";//pev = 0.99
       K_vec.push_back(gcvKneipLiebl(m_mu,m_Y_preprocessed, argvalsO_i,m_muO[i], m_locO[i], m_cov_est, m_sigma2, method, 0.99));
     }else{K_vec.push_back(K);}
 
@@ -506,13 +506,13 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
     NumericVector argvalsO_i_vector = wrap(argvalsO_i);
 
     Function smooth_spline = stats["smooth.spline"];
-    List smooth_fit = smooth_spline(Named("y") = y_c, Named("x") = obs_argvals);
+    List smooth_fit = smooth_spline(_["y"] = y_c, _["x"] = obs_argvals);
     Rcout<<"called stats::smooth_spline in reconstructCurve()"<<std::endl;
 
     Function predict = stats["predict"];
     Rcout<<"called predict in reconstructCurve()"<<std::endl;
-    List fragmO_presmooth_list = predict(smooth_fit, argvalsO_i_vector);
-    NumericVector fragmO_presmooth = fragmO_presmooth_list[2];
+    List fragmO_presmooth_list = predict(smooth_fit, _["x"] = argvalsO_i_vector);//secondo me non va bene come passo argvalsO_i_vector
+    NumericVector fragmO_presmooth = fragmO_presmooth_list["y"];
 
     List result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], m_efun_reconst[i], fragmO_presmooth, K_vec[i],
                                 m_evaluesOO[i], m_observed_period[i], m_cov_est);
