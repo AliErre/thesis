@@ -26,6 +26,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// vec
+List vec(const NumericMatrix& G0, const NumericVector& row_vec, const NumericVector& col_vec, const NumericVector& weights);
+RcppExport SEXP _wfda_vec(SEXP G0SEXP, SEXP row_vecSEXP, SEXP col_vecSEXP, SEXP weightsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type G0(G0SEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type row_vec(row_vecSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type col_vec(col_vecSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type weights(weightsSEXP);
+    rcpp_result_gen = Rcpp::wrap(vec(G0, row_vec, col_vec, weights));
+    return rcpp_result_gen;
+END_RCPP
+}
 // compute
 List compute(Formula& f, NumericVector& Y, NumericVector& d_vec);
 RcppExport SEXP _wfda_compute(SEXP fSEXP, SEXP YSEXP, SEXP d_vecSEXP) {
@@ -56,6 +70,7 @@ RcppExport SEXP _rcpp_module_boot_reconstruction();
 
 static const R_CallMethodDef CallEntries[] = {
     {"_wfda_reconstKraus_fun", (DL_FUNC) &_wfda_reconstKraus_fun, 5},
+    {"_wfda_vec", (DL_FUNC) &_wfda_vec, 4},
     {"_wfda_compute", (DL_FUNC) &_wfda_compute, 3},
     {"_wfda_check", (DL_FUNC) &_wfda_check, 2},
     {"_rcpp_module_boot_reconstruction", (DL_FUNC) &_rcpp_module_boot_reconstruction, 0},

@@ -202,7 +202,13 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
       }
     }
   }
-
+  /*Rcout<<"G0"<<std::endl;
+  for(int i = 0; i < G0.nrow(); ++i)
+  {
+    for(int j = 0; j < G0.ncol(); ++j)
+      Rcout<<G0(i,j)<<" ";
+    Rcout<<std::endl;
+  }*/
   NumericVector diag_G0(d);
   for (int i = 0; i < d; ++i) {
     diag_G0[i] = G0(i, i);
@@ -233,21 +239,45 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
     std::copy(Y_first.begin(), Y_first.end(), col_vec.begin() + i * Y_first.size());
   }
 
+  /*Rcout<<"col_vec"<<std::endl;
+  for(const auto&c:col_vec)
+  { 
+    Rcout<<c<<" ";
+  }
+  */
   Environment mgcv = Environment::namespace_env("mgcv");
   Function gam = mgcv["gam"];
   Function predict_gam = mgcv["predict.gam"];
   NumericVector g0(G0.begin(),G0.end());
+  /*Rcout<<"as.vector(G0)"<<std::endl;
+  for(const auto& gg:g0)
+  {
+    Rcout<<gg<<" ";
+  }
+  Rcout<<std::endl;*/
   NumericVector weights(cov_count.begin(),cov_count.end());
+  /*Rcout<<"weights"<<std::endl;
+  for(const auto& ww:weights)
+  {
+    Rcout<<ww<<" ";
+  }
+  Rcout<<std::endl;*/
+  
   std::string formula = "G0 ~ te(row_vec, col_vec, k = " + std::to_string(nbasis) + ")";
   Formula f = Formula(formula);
-  DataFrame data = DataFrame::create(_["G0"] = g0, _["row_vec"] = row_vec, _["col_vec"] = col_vec, _["weights"] = weights);
+  DataFrame data = DataFrame::create(_["G0"] = g0, _["row_vec"] = row_vec, _["col_vec"] = col_vec);
   //stop("before fitting gam");
-  List gamModel = gam(_["formula"] = f, _["data"] = data);//fit gam model
+  List gamModel = gam(_["formula"] = f, _["data"] = data, _["weights"] = weights);//fit gam model
   Rcout<<"fitted gam model in smooth_cov"<<std::endl;
   DataFrame newdata = DataFrame::create(Named("row_vec") = row_vec, Named("col_vec") = col_vec);//data for prediction
 
   NumericVector predictions = predict_gam(gamModel, _["newdata"] = newdata);
   Rcout<<"predict_gam in smooth_cov"<<std::endl;
+  for(const auto&p: predictions)
+  {
+    Rcout<<p<<" ";
+  }
+  Rcout<<std::endl;
 
   //reshape predictions vector into matrix
   NumericMatrix npc0(d, d);
@@ -256,8 +286,11 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
 
   // symmetrization
   for (int i = 0; i < d; ++i) {
-    for (int j = 0; j < d; ++j) {
-          npc0_sym(i, j) = (npc0(i, j) + npc0(j, i)) / 2.0;
+    for (int j = i; j < d; ++j) {
+          {
+            npc0_sym(i, j) = (npc0(i, j) + npc0(j, i)) / 2.0;
+            npc0_sym(j,i) = npc0_sym(i,j);
+          }
     }
   }
 
@@ -328,6 +361,27 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));
   arma::mat V = Wsqrt * as<arma::mat>(npc_0) * Wsqrt;
 
+  /*Rcout<<"w: ";
+  for(const auto& w_:w)
+  {
+    Rcout<<w_<<" ";
+  }
+  Rcout<<std::endl;*/
+  /*Rcout<<"Wsqrt: ";
+  for(size_t i = 0; i < Wsqrt.n_rows;++i)
+  {
+    for(size_t j = 0; j < Wsqrt.n_cols; ++j)
+      Rcout<<Wsqrt(i,j)<<" ";
+    Rcout<<std::endl;
+  }*/
+  Rcout<<"V: ";
+  for(size_t i = 0; i < V.n_rows; ++i)
+  {
+    for(size_t j = 0; j < V.n_cols; ++j)
+      Rcout<<V(i,j)<<" ";
+    Rcout<<std::endl;
+  }
+
   arma::vec evalues;
   arma::mat eigenvectors;
   arma::eig_sym(evalues, eigenvectors, V);
@@ -347,11 +401,33 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
         {npc_index = indices[0]; npc = static_cast<int>(npc_index);}
     }
   }
+  Rcout<<"npc: "<<npc<<std::endl;
 
   //only select eigenvectors and corresponding eigenvalues up to npc-th
   arma::mat selected_eigenvectors = eigenvectors.cols(0, npc);
   arma::mat efunctions = Winvsqrt * selected_eigenvectors;
   arma::vec selected_evalues = evalues.subvec(0, npc);
+
+  Rcout<<"selected eigenvectors: "<<std::endl;
+  for(size_t i = 0; i < selected_eigenvectors.n_rows; ++i)
+  {
+    for(size_t j = 0; j < selected_eigenvectors.n_cols; ++j)
+      Rcout<<selected_eigenvectors(i,j)<<" ";
+    Rcout<<std::endl;
+  }
+  Rcout<<"efunctions: "<<std::endl;
+  for(size_t i = 0; i < efunctions.n_rows; ++i)
+  {
+    for(size_t j = 0; j < efunctions.n_cols; ++j)
+      Rcout<<efunctions(i,j)<<" ";
+    Rcout<<std::endl;
+  }
+  Rcout<<"selected eigenvalues: "<<std::endl;
+  for(const auto&vv:selected_evalues)
+  {
+    Rcout<<vv<<" ";
+  }
+  Rcout<<std::endl;
   
   //estimated covariance function
   arma::mat cov_est = efunctions * arma::diagmat(selected_evalues) * efunctions.t();
@@ -383,10 +459,16 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   for(const auto& a:argvals_subset)
   {Rcout<<a<<"\t";}
   std::vector<double> w2 = quadWeights(argvals_subset);//default: trapezioidal
+  Rcout<<"w2: "<<std::endl;
+  for(const auto& ww:w2)
+  {
+    Rcout<<ww<<" ";
+  }
+  Rcout<<std::endl;
 
   //sigma
   double sigma2 = std::max(weighted_mean(argvals_subset, w2), 0.0);//lei aveva messo na.rm ma secondo me non dovrebbero esserci NA
-  
+  Rcout<<"sigma2: "<<sigma2<<std::endl;
   //computations for observed fragments
   //cambia queste definizioni NOTA BENE NOTA BENE NOTA BENE?
   List muO(reconst_fcts.size()), scoresO(reconst_fcts.size()), CE_scoresO(reconst_fcts.size()),

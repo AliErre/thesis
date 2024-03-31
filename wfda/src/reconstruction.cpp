@@ -249,11 +249,11 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
     //id_vec 0-based per ora
     ydata.push_back(std::make_tuple(id_vec[i],unlist(Lu)[i],unlist(Ly)[i])); // .id,(time) .index, .value
   }
-  Rcout<<"ydata"<<std::endl;
+  /*Rcout<<"ydata"<<std::endl;
   for(const auto&t:ydata)
   {
     Rcout<<std::get<0>(t)<<"\t"<<std::get<1>(t)<<"\t"<<std::get<2>(t)<<std::endl;
-  }
+  }*/
 
   constexpr int nbasis = 10;//vedi se ha senso mettere qua constexpr
   max_bins = (max_bins == 0)? 1000 : max_bins; //cambia il default, non deve essere 0 ma NULL
@@ -351,18 +351,18 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   {
     Rcout<<"entered center"<<std::endl;
     NumericMatrix Y_mat = Y.second;
-    Rcout<<"Y_mat"<<std::endl;
+    /*Rcout<<"Y_mat"<<std::endl;
     for(int i = 0; i < Y_mat.nrow();++i)
     {
       for(int j = 0; j < Y_mat.ncol(); ++j)
         Rcout<<Y_mat(i,j)<<" ";
       Rcout<<std::endl;
-    }
+    }*/
     NumericVector vec(Y_mat.begin(), Y_mat.end());
-    Rcout<<"as.vector(Y)"<<std::endl;
+    /*Rcout<<"as.vector(Y)"<<std::endl;
     for(const auto&v:vec)
       Rcout<<v<<"\t";
-    Rcout<<std::endl;
+    Rcout<<std::endl;*/
     Environment mgcv = Environment::namespace_env("mgcv");    
     Rcout<<"imported namespace mgcv"<<std::endl;
     Function gam = mgcv["gam"];
@@ -391,19 +391,30 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
     mu = NumericVector(d,0.0);
   }
   m_mu = mu;
-  Rcout<<"mu \t";
+  /*Rcout<<"mu \t";
   for(const auto&m:mu)
   {
     Rcout<<m<<"\t";
   }
-  Rcout<<std::endl;
-  //ho debuggato fino a qua
+  Rcout<<std::endl;*/
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov
   std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
   Rcout<<"called smooth_cov and returned"<<std::endl;
   NumericMatrix npc0 = cov_smooth.first;
   NumericVector diagG0 = cov_smooth.second;
+  /*Rcout<<"npc0:"<<std::endl;
+  for(size_t i = 0; i < npc0.nrow(); ++i)
+  {
+    for(size_t j = 0; j < npc0.ncol(); ++j)
+      Rcout<<npc0(i,j)<<" ";
+    Rcout<<std::endl;
+  }*/
+  /*Rcout<<"diagG0"<<std::endl;
+  for(const auto&d:diagG0)
+    Rcout<<d<<" ";
+  Rcout<<std::endl;*/
+
   //numerical integration for calculation of eigenvalues (see Ramsay & Silverman, Ch. 8)
   std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List, double, arma::mat> ret = eigen(Y.first, observed_period, npc0, 0.99, Y_pred, mu, diagG0, true, reconst_fcts);
   
