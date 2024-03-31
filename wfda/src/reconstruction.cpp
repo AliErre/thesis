@@ -401,8 +401,8 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   //cov
   std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
   Rcout<<"called smooth_cov and returned"<<std::endl;
-  NumericMatrix npc0 = cov_smooth.first;
-  NumericVector diagG0 = cov_smooth.second;
+  NumericMatrix npc0 = cov_smooth.first; //giusto
+  NumericVector diagG0 = cov_smooth.second; //giusto
   /*Rcout<<"npc0:"<<std::endl;
   for(size_t i = 0; i < npc0.nrow(); ++i)
   {

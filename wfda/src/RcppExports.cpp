@@ -26,6 +26,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// eigenvalues
+arma::vec eigenvalues(arma::mat V);
+RcppExport SEXP _wfda_eigenvalues(SEXP VSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type V(VSEXP);
+    rcpp_result_gen = Rcpp::wrap(eigenvalues(V));
+    return rcpp_result_gen;
+END_RCPP
+}
 // vec
 List vec(const NumericMatrix& G0, const NumericVector& row_vec, const NumericVector& col_vec, const NumericVector& weights);
 RcppExport SEXP _wfda_vec(SEXP G0SEXP, SEXP row_vecSEXP, SEXP col_vecSEXP, SEXP weightsSEXP) {
@@ -70,6 +81,7 @@ RcppExport SEXP _rcpp_module_boot_reconstruction();
 
 static const R_CallMethodDef CallEntries[] = {
     {"_wfda_reconstKraus_fun", (DL_FUNC) &_wfda_reconstKraus_fun, 5},
+    {"_wfda_eigenvalues", (DL_FUNC) &_wfda_eigenvalues, 1},
     {"_wfda_vec", (DL_FUNC) &_wfda_vec, 4},
     {"_wfda_compute", (DL_FUNC) &_wfda_compute, 3},
     {"_wfda_check", (DL_FUNC) &_wfda_check, 2},

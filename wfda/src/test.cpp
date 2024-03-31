@@ -1,5 +1,13 @@
-#include <Rcpp.h>
+#include <RcppArmadillo.h>
 using namespace Rcpp;
+// [[Rcpp::export]]
+arma::vec eigenvalues(arma::mat V) {
+    // Compute eigenvalues of a symmetric matrix
+    arma::vec eigvals = arma::eig_sym(V);
+
+    return eigvals;
+}
+
 // [[Rcpp::export]]
 List vec(const NumericMatrix& G0, const NumericVector& row_vec, const NumericVector& col_vec, const NumericVector& weights)
 {

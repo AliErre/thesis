@@ -5,6 +5,10 @@ reconstKraus_fun <- function(Y, mean_vec, cov_mat, index, alpha) {
     .Call(`_wfda_reconstKraus_fun`, Y, mean_vec, cov_mat, index, alpha)
 }
 
+eigenvalues <- function(V) {
+    .Call(`_wfda_eigenvalues`, V)
+}
+
 vec <- function(G0, row_vec, col_vec, weights) {
     .Call(`_wfda_vec`, G0, row_vec, col_vec, weights)
 }

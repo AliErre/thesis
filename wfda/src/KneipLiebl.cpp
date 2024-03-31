@@ -273,11 +273,11 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
 
   NumericVector predictions = predict_gam(gamModel, _["newdata"] = newdata);
   Rcout<<"predict_gam in smooth_cov"<<std::endl;
-  for(const auto&p: predictions)
+  /*for(const auto&p: predictions)
   {
     Rcout<<p<<" ";
   }
-  Rcout<<std::endl;
+  Rcout<<std::endl;*/
 
   //reshape predictions vector into matrix
   NumericMatrix npc0(d, d);
@@ -374,17 +374,21 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       Rcout<<Wsqrt(i,j)<<" ";
     Rcout<<std::endl;
   }*/
-  Rcout<<"V: ";
+  /*Rcout<<"V: ";
   for(size_t i = 0; i < V.n_rows; ++i)
   {
     for(size_t j = 0; j < V.n_cols; ++j)
       Rcout<<V(i,j)<<" ";
     Rcout<<std::endl;
-  }
+  }*/
 
   arma::vec evalues;
   arma::mat eigenvectors;
-  arma::eig_sym(evalues, eigenvectors, V);
+  arma::eig_sym(evalues, eigenvectors, V);//restituisce da autovalore più basso a più alto
+  arma::uvec sort_index = arma::sort_index(evalues, "desc");
+  //ordine discendente
+  evalues = evalues(sort_index);
+  eigenvectors = eigenvectors.cols(sort_index);
   evalues.transform([](double val) { return val <= 0 ? 0.0 : val; });//ora tutti gli autovalori sono >= 0
   int npc = arma::sum(evalues > 0) - 1;//conta valori positivi -> poi lo devo usare come indice di posizione, quindi tolgo 1
   double sum_pos = arma::sum(evalues(arma::find(evalues > 0)));
@@ -404,33 +408,33 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   Rcout<<"npc: "<<npc<<std::endl;
 
   //only select eigenvectors and corresponding eigenvalues up to npc-th
-  arma::mat selected_eigenvectors = eigenvectors.cols(0, npc);
+  arma::mat selected_eigenvectors = eigenvectors.cols(0, npc); //i primi due hanno segni opposti
   arma::mat efunctions = Winvsqrt * selected_eigenvectors;
   arma::vec selected_evalues = evalues.subvec(0, npc);
 
-  Rcout<<"selected eigenvectors: "<<std::endl;
+  /*Rcout<<"selected eigenvectors: "<<std::endl;
   for(size_t i = 0; i < selected_eigenvectors.n_rows; ++i)
   {
     for(size_t j = 0; j < selected_eigenvectors.n_cols; ++j)
       Rcout<<selected_eigenvectors(i,j)<<" ";
     Rcout<<std::endl;
   }
-  Rcout<<"efunctions: "<<std::endl;
+  Rcout<<"efunctions: "<<std::endl;//le prime due efunctions hanno segni opposti in R
   for(size_t i = 0; i < efunctions.n_rows; ++i)
   {
     for(size_t j = 0; j < efunctions.n_cols; ++j)
       Rcout<<efunctions(i,j)<<" ";
     Rcout<<std::endl;
-  }
-  Rcout<<"selected eigenvalues: "<<std::endl;
+  }*/
+  /*Rcout<<"selected eigenvalues: "<<std::endl;
   for(const auto&vv:selected_evalues)
   {
     Rcout<<vv<<" ";
   }
-  Rcout<<std::endl;
+  Rcout<<std::endl;*/
   
   //estimated covariance function
-  arma::mat cov_est = efunctions * arma::diagmat(selected_evalues) * efunctions.t();
+  arma::mat cov_est = efunctions * arma::diagmat(selected_evalues) * efunctions.t();//dovrebbe venire giusta nonostante differenze di segno in efunctions, visto che moltiplico due volte
   //numerical integration for estimation of sigma2
   double T_len = argvals[argvals.size() - 1] - argvals[0];//interval length
 
