@@ -1,3 +1,5 @@
 useDynLib(wfda, .registration=TRUE)
 import(methods, Rcpp)
+importFrom(mgcv, gam, predict.gam)
+importFrom(stats, smooth.spline, predict, spline)
 exportPattern("^[[:alpha:]]+")
