@@ -7,10 +7,10 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
                    const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k,
                    const arma::vec& evaluesO = arma::vec(), const std::vector<double>& argvalsO = std::vector<double>(), const arma::mat& cov = arma::mat())
 {
-  Rcout<<"reconstKL_fun"<<std::endl;
+  //Rcout<<"reconstKL_fun"<<std::endl;
   //non so se esportarla, o se la esporto devo avere a disposzione tutti sti dati comunque
   int K = std::min(k, efunc_r.ncol());
-  Rcout<<"K: "<<K<<std::endl;
+  //Rcout<<"K: "<<K<<std::endl;
   arma::mat efunc_r_arma = as<arma::mat>(efunc_r);
   arma::vec mu_arma = as<arma::vec>(mu);//giusto
   arma::mat extracted_scores = arma::reshape(scoresO.subvec(0, K - 1), 1, K);
@@ -22,7 +22,7 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
     //arma::uword min = locO.min();//locO min sarà sempre 0?
     //reconstr.subvec(0, min) += fragmO[0] - reconstr[min];
     arma::uword max = locO.max();
-    Rcout<<"reconstr_max"<<reconstr[max]<<std::endl;
+    //Rcout<<"reconstr_max"<<reconstr[max]<<std::endl;
     reconstr.subvec(max + 1, argvals.size() - 1) += fragmO[fragmO.size() - 1] - reconstr[max];
     reconstr(locO) = as<arma::vec>(fragmO);//giusto
   }
@@ -84,7 +84,7 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
                                                        bool binning, int max_bins){
 
   //crea una copia
-  Rcout<<"irreg2mat"<<std::endl;
+  //Rcout<<"irreg2mat"<<std::endl;
   std::vector<std::tuple<int, double, double>> y_data_complete(find_complete_tuple(y_data));
   std::set<double> bins; 
 
@@ -103,19 +103,6 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   std::vector<double> binvalues = make_bins(bins, max_bins, condition);//bins sarà modificato, chiamo make_bins con la reference
 
   //associa a std::get<1>(t) un bin => crea classi di .index
-  /*Rcout<<"binvalues \t";
-  for(const auto&bb:binvalues)
-  {
-    Rcout<<bb<<"\t";
-  }*/
-
-  /*Rcout<<std::endl; Rcout<<"bins_set"<<"\t";
-  for(const auto&b:bins)
-  {
-    Rcout<<b<<"\t";
-  }*/
-
-
   //estrai vettore dal secondo elemento della tupla
   std::vector<double> index_vector;
   index_vector.reserve(y_data_complete.size());
@@ -135,18 +122,7 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
       auto it = std::find(sorted_classes.begin(), sorted_classes.end(), classes[i]);//lo trova per forza. find su un vettore restituisce iteratore
       column_indices[i] = std::distance(sorted_classes.begin(), it);
   }
-  /*Rcout<<"ids \t";//sono sbagliati per prima riga x seconda terza quarta colonna
-  for(const auto& indice:ids)
-  {
-    Rcout<<indice<<" ";
-  }
-  Rcout<<std::endl;
-  Rcout<<"column_indices \t";//sono giusti
-  for(const auto& column:column_indices)
-  {
-    Rcout<<column<<" ";
-  }
-  Rcout<<std::endl;*/
+ 
   //inizializza ad NA_REAL, alcune curve non hanno ossservazioni in dati bins
   NumericMatrix Y(nobs, bins.size()-1);
   Y.fill(NA_REAL);
@@ -164,7 +140,7 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
 std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,const NumericMatrix& Y_tilde,const NumericVector& Y_first,
                          int d, int i, int nbasis)
 {
-  Rcout<<"smooth_cov"<<std::endl;
+  //Rcout<<"smooth_cov"<<std::endl;
   NumericMatrix cov_mean(d, d);
   NumericMatrix cov_count(d,d);
   cov_count.fill(0.0);
@@ -203,13 +179,7 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
       }
     }
   }
-  /*Rcout<<"G0"<<std::endl;
-  for(int i = 0; i < G0.nrow(); ++i)
-  {
-    for(int j = 0; j < G0.ncol(); ++j)
-      Rcout<<G0(i,j)<<" ";
-    Rcout<<std::endl;
-  }*/
+
   NumericVector diag_G0(d);
   for (int i = 0; i < d; ++i) {
     diag_G0[i] = G0(i, i);
@@ -238,35 +208,17 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
   Function gam = mgcv["gam"];
   Function predict_gam = mgcv["predict.gam"];
   NumericVector g0(G0.begin(),G0.end());
-  /*Rcout<<"as.vector(G0)"<<std::endl;
-  for(const auto& gg:g0)
-  {
-    Rcout<<gg<<" ";
-  }
-  Rcout<<std::endl;*/
   NumericVector weights(cov_count.begin(),cov_count.end());
-  /*Rcout<<"weights"<<std::endl;
-  for(const auto& ww:weights)
-  {
-    Rcout<<ww<<" ";
-  }
-  Rcout<<std::endl;*/
   
   std::string formula = "G0 ~ te(row_vec, col_vec, k = " + std::to_string(nbasis) + ")";
   Formula f = Formula(formula);
   DataFrame data = DataFrame::create(_["G0"] = g0, _["row_vec"] = row_vec, _["col_vec"] = col_vec);
   //stop("before fitting gam");
   List gamModel = gam(_["formula"] = f, _["data"] = data, _["weights"] = weights);//fit gam model
-  Rcout<<"fitted gam model in smooth_cov"<<std::endl;
+  //Rcout<<"fitted gam model in smooth_cov"<<std::endl;
   DataFrame newdata = DataFrame::create(Named("row_vec") = row_vec, Named("col_vec") = col_vec);//data for prediction
 
   NumericVector predictions = predict_gam(gamModel, _["newdata"] = newdata);
-  Rcout<<"predict_gam in smooth_cov"<<std::endl;
-  /*for(const auto&p: predictions)
-  {
-    Rcout<<p<<" ";
-  }
-  Rcout<<std::endl;*/
 
   //reshape predictions vector into matrix
   NumericMatrix npc0(d, d);
@@ -342,7 +294,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
            double pev, const NumericMatrix& Y_pred, 
            const NumericVector& mu, const NumericVector& diagG0, bool CEScores, const IntegerVector& reconst_fcts) {
   
-  Rcout<<"eigen"<<std::endl;
+  //Rcout<<"eigen"<<std::endl;
   // numerical integration for calculation of eigenvalues
   std::vector<double> w = quadWeights(argvals);//default is trapezioidal
   arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
@@ -373,7 +325,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
         {npc_index = indices[0]; npc = static_cast<int>(npc_index);}
     }
   }
-  Rcout<<"npc eigen: "<<npc<<std::endl;
+  //Rcout<<"npc eigen: "<<npc<<std::endl;
 
   //only select eigenvectors and corresponding eigenvalues up to npc-th
   arma::mat selected_eigenvectors = eigenvectors.cols(0, npc); //i primi due hanno segni opposti
@@ -391,7 +343,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   int T1_min = std::distance(argvals.begin(), it); //in R which returns an index
 
   double upper_bound = argvals[argvals.size() - 1] - 0.25 * T_len;
-  Rcout<<"upper bound "<<upper_bound;
+  //Rcout<<"upper bound "<<upper_bound;
   auto it_max = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
   if(it_max != argvals.begin())
   {
@@ -400,7 +352,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
   int T1_max = std::distance(argvals.begin(), it_max);// = 0 se sono tutti maggiori di upper_bound. Ma non dovrebbe succedee
   arma::vec diag_diff = as<arma::vec>(diagG0) - arma::diagvec(cov_est);
-  Rcout<<"T1_min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
+  //Rcout<<"T1_min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
   arma::vec sub_diag = diag_diff.subvec(T1_min, T1_max);
   std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max + 1);
 
@@ -420,7 +372,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   for (int i = 0; i < reconst_fcts.size(); ++i) {//argvalsO should be of size reconst_fcts (observed_period in myfpca)
     // Numerical integration for calculation of eigenvalues
     std::vector<double> w = quadWeights(argvalsO[i]);
-    Rcout<<std::endl;
+    //Rcout<<std::endl;
     arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
     arma::mat Wsqrt = arma::diagmat(arma::sqrt(w_arma));
     arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));
@@ -475,7 +427,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     arma::uvec no_na = arma::find_finite(Y_cent_arma);
     // Calculate CE_scoresO
     bool size = false;
-    Rcout<<"CE_scoresO: ";
     if (CEScores) {
       if (sigma2 == 0) {
         sigma2 = 1e-6;
@@ -488,10 +439,10 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       arma::mat ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO - 1*CEScores*size),arma::span(0, npcO - 1*CEScores*size)));
       arma::vec CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * Y_cent_arma(no_na);//arma::vec sono vettori colonna
       CE_scoresO[i] = CE_scoresO_i; //corretto a meno di un segno
-      Rcout<<CE_scoresO_i<<" ";
+      //Rcout<<CE_scoresO_i<<" ";
     } else {
       CE_scoresO[i] = NA_REAL;
-      Rcout<<NA_REAL<<" ";
+      //Rcout<<NA_REAL<<" ";
     }
 
     arma::mat efunctionsO_i_sub = efunctionsO_i.rows(obs_locO);
@@ -514,11 +465,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
           efun_reconst_i(r,k) = integral/evaluesO_i[k];
       }
     }
-    /*Rcout<<"evaluesOi in eigen"<<std::endl;
-    Rcout<<evaluesO_i;
-    Rcout<<"reconst eigen f in eigen:"<<std::endl;
-    Rcout<<efun_reconst_i;*/
-
+    
     efun_reconst[i] = efun_reconst_i;
     
     arma::vec muO_i(locO.size());
@@ -543,7 +490,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
                   const std::vector<double>& argvalsO_i, const arma::uvec& locO,
                   const arma::mat& cov_est, double sigma2, const std::string& method, double pev)
 {
-  Rcout<<"gcvkl"<<std::endl;
+  //Rcout<<"gcvkl"<<std::endl;
   NumericMatrix Y(clone(Y_preprocessed.second));
   std::vector<int> complete_rows;
   complete_rows.reserve(Y.nrow());
@@ -666,10 +613,10 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       Function smooth_spline = stats["smooth.spline"];
       //smooth splines
       List smooth_fit = smooth_spline(_["y"] = y, _["x"] = x);//S3 object
-      Rcout<<"smooth_spline in  gcv"<<std::endl;
+      //Rcout<<"smooth_spline in  gcv"<<std::endl;
       Function predict = stats["predict"];
       List result = predict(smooth_fit, _["x"] = x);
-      Rcout<<"predict in gcv"<<std::endl;
+      //Rcout<<"predict in gcv"<<std::endl;
       fragmO_presmooth = result["y"];
     }
     

@@ -1,8 +1,7 @@
-#include "gcv.h"
-//correggi la funzione -> aggiungi metodi per l'update di m_YY, così non ricreo l'oggetto gcv ogni volta 
+#include "gcv.h" 
 double gcv::value(double x){//gcvKrausFun
     int n = m_YY.ncol();
-    Rcout<<"alpha: "<<x<<std::endl;
+    //Rcout<<"alpha: "<<x<<std::endl;
     NumericVector rss = NumericVector(n);
     double df = 0.0;
     for(int j=0; j < n ; ++j){
@@ -37,6 +36,6 @@ double gcv::value(double x){//gcvKrausFun
             {df = result["df"];}
     }
     double gcv = sum(rss)/(std::pow(1-df/n,2)); // std::pow() non è efficiente, farlo io
-    Rcout<<"GCV metric: "<<gcv<<std::endl;
+    //Rcout<<"GCV metric: "<<gcv<<std::endl;
     return gcv;
 }

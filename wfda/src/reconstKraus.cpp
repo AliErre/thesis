@@ -54,7 +54,7 @@ List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
     hi_scaled = hi/arma::sqrt(arma::diagvec(covMM_mat));   
   }
 
-  for(auto& elem:hi_scaled){Rcout<<"hi_scaled: "<<elem<<std::endl;}
+  //for(auto& elem:hi_scaled){Rcout<<"hi_scaled: "<<elem<<std::endl;}
 
   return List::create(Named("X_cent_reconst_vec") = NumericVector(X_cent_reconst_vec.begin(), X_cent_reconst_vec.end()), //arma::vec
                       Named("df") = df,//double

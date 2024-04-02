@@ -16,7 +16,7 @@ class ReconstructionBase {
         // specialize
         virtual ~ReconstructionBase() = default; // polymorphism => need virtual destructor
         virtual List reconstructCurve(double, bool, const NumericVector&, int, int, int) = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
-
+        //devo aggiungere i default
         // same for all derived
         std::vector<int> find_obs_inc(const NumericMatrix&) const; //farne una free function?
         IntegerVector reconst_fcts() const;//getter
@@ -57,7 +57,7 @@ class ReconstructionExtrapolation : public ReconstructionBase{
 
 class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un double o un int in R
     public: 
-        ReconstructionKLAl(const NumericMatrix& Y): //dovrò aggiungere questi argomenti a reco_factory
+        ReconstructionKLAl(const NumericMatrix& Y):
                            ReconstructionBase(Y) {}; 
         List reconstructCurve(double, bool, const NumericVector&, int, int, int) override;
         //NumericVector è t.points, K, nRegGrid, maxBins
