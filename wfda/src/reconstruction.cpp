@@ -495,7 +495,7 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
     if(K == 0)//per ora ho dato il default a 0, ma poi mettere Nullable
     {
       std::string method = "KLAl4";//pev = 0.99
-      K_vec.push_back(gcvKneipLiebl(m_mu,m_Y_preprocessed, argvalsO_i,m_muO[i], m_locO[i], m_cov_est, m_sigma2, method, 0.99));
+      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i,m_muO[i], m_locO[i], m_cov_est, m_sigma2, method, 0.99));
     }else{K_vec.push_back(K);}
 
 
