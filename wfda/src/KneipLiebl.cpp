@@ -11,25 +11,22 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
   //non so se esportarla, o se la esporto devo avere a disposzione tutti sti dati comunque
   int K = std::min(k, efunc_r.ncol());
   Rcout<<"K: "<<K<<std::endl;
-  arma::mat efunc_r_arma = as<arma::mat>(efunc_r);//sbagliato
-  Rcout<<"efunc"<<std::endl;
-  Rcout<<efunc_r_arma;
+  arma::mat efunc_r_arma = as<arma::mat>(efunc_r);
   arma::vec mu_arma = as<arma::vec>(mu);//giusto
   arma::mat extracted_scores = arma::reshape(scoresO.subvec(0, K - 1), 1, K);
-  arma::vec reconstr = mu_arma + ((efunc_r_arma.cols(0,K-1)) * extracted_scores.t());
+  arma::vec reconstr = mu_arma + ((efunc_r_arma.cols(0,K-1)) * extracted_scores.t());//giusto
   //                   15 x 1  +  15 x k                     *          k x 1 = 15 x 1 + 15 x 1
-  
+
   if(fragmO.size() != 0)//metodo4
   {
     //arma::uword min = locO.min();//locO min sarà sempre 0?
     //reconstr.subvec(0, min) += fragmO[0] - reconstr[min];
     arma::uword max = locO.max();
     Rcout<<"reconstr_max"<<reconstr[max]<<std::endl;
-    arma::vec frag = as<arma::vec>(fragmO);
-    //Rcout<<"fragmO"<<frag<<std::endl;
     reconstr.subvec(max + 1, argvals.size() - 1) += fragmO[fragmO.size() - 1] - reconstr[max];
-    reconstr(locO) = as<arma::vec>(fragmO);//controlla poi che anche a me fragmO venga di dimensione locO.size()
+    reconstr(locO) = as<arma::vec>(fragmO);//giusto
   }
+  stop("check till here");
   arma::vec weights_reconst;
   if(cov.is_empty() || evaluesO.is_empty())
   {
@@ -160,10 +157,6 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   }
 
   std::pair<std::vector<double>,NumericMatrix> Y_bins = std::make_pair(binvalues,Y);//binvalues is colnames(Y)
-  /*Rcout<<"irreg2mat: Y.first"<<std::endl;
-  for(const auto& y:Y_bins.first){
-      Rcout<<y<<"\t";
-  }*/
   return Y_bins;
   
 }
@@ -236,24 +229,12 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
       row_vec[index++] = y;
     }
   }
-  /*Rcout<<"length row_vec: "<<row_vec.size()<<std::endl;
-  for(const auto&r:row_vec)
-  {
-    Rcout<<r<<"\t";
-  }
-  Rcout<<std::endl;*/
 
   NumericVector col_vec(Y_first.size() * d);
   for(int i = 0; i < d; ++i) {
     std::copy(Y_first.begin(), Y_first.end(), col_vec.begin() + i * Y_first.size());
   }
 
-  /*Rcout<<"col_vec"<<std::endl;
-  for(const auto&c:col_vec)
-  { 
-    Rcout<<c<<" ";
-  }
-  */
   Environment mgcv = Environment::namespace_env("mgcv");
   Function gam = mgcv["gam"];
   Function predict_gam = mgcv["predict.gam"];
@@ -370,27 +351,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));
   arma::mat V = Wsqrt * as<arma::mat>(npc_0) * Wsqrt;
 
-  /*Rcout<<"w: ";
-  for(const auto& w_:w)
-  {
-    Rcout<<w_<<" ";
-  }
-  Rcout<<std::endl;*/
-  /*Rcout<<"Wsqrt: ";
-  for(size_t i = 0; i < Wsqrt.n_rows;++i)
-  {
-    for(size_t j = 0; j < Wsqrt.n_cols; ++j)
-      Rcout<<Wsqrt(i,j)<<" ";
-    Rcout<<std::endl;
-  }*/
-  /*Rcout<<"V: ";
-  for(size_t i = 0; i < V.n_rows; ++i)
-  {
-    for(size_t j = 0; j < V.n_cols; ++j)
-      Rcout<<V(i,j)<<" ";
-    Rcout<<std::endl;
-  }*/
-
   arma::vec evalues;
   arma::mat eigenvectors;
   arma::eig_sym(evalues, eigenvectors, V);//restituisce da autovalore più basso a più alto
@@ -414,33 +374,13 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
         {npc_index = indices[0]; npc = static_cast<int>(npc_index);}
     }
   }
-  Rcout<<"npc: "<<npc<<std::endl;
+  Rcout<<"npc eigen: "<<npc<<std::endl;
 
   //only select eigenvectors and corresponding eigenvalues up to npc-th
   arma::mat selected_eigenvectors = eigenvectors.cols(0, npc); //i primi due hanno segni opposti
   arma::mat efunctions = Winvsqrt * selected_eigenvectors;
   arma::vec selected_evalues = evalues.subvec(0, npc);
 
-  /*Rcout<<"selected eigenvectors: "<<std::endl;
-  for(size_t i = 0; i < selected_eigenvectors.n_rows; ++i)
-  {
-    for(size_t j = 0; j < selected_eigenvectors.n_cols; ++j)
-      Rcout<<selected_eigenvectors(i,j)<<" ";
-    Rcout<<std::endl;
-  }
-  Rcout<<"efunctions: "<<std::endl;//le prime due efunctions hanno segni opposti in R
-  for(size_t i = 0; i < efunctions.n_rows; ++i)
-  {
-    for(size_t j = 0; j < efunctions.n_cols; ++j)
-      Rcout<<efunctions(i,j)<<" ";
-    Rcout<<std::endl;
-  }*/
-  /*Rcout<<"selected eigenvalues: "<<std::endl;
-  for(const auto&vv:selected_evalues)
-  {
-    Rcout<<vv<<" ";
-  }
-  Rcout<<std::endl;*/
   
   //estimated covariance function
   arma::mat cov_est = efunctions * arma::diagmat(selected_evalues) * efunctions.t();//dovrebbe venire giusta nonostante differenze di segno in efunctions, visto che moltiplico due volte
@@ -453,10 +393,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
   double upper_bound = argvals[argvals.size() - 1] - 0.25 * T_len;
   Rcout<<"upper bound "<<upper_bound;
-  /*for(const auto& a:argvals)
-  {
-    Rcout<<a<<"\t";
-  }*/
   auto it_max = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
   if(it_max != argvals.begin())
   {
@@ -468,16 +404,8 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   Rcout<<"T1_min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
   arma::vec sub_diag = diag_diff.subvec(T1_min, T1_max);
   std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max + 1);
-  //Rcout<<"length subset "<<argvals_subset.size()<<std::endl;
-  /*for(const auto& a:argvals_subset)
-  {Rcout<<a<<"\t";}*/
+
   std::vector<double> w2 = quadWeights(argvals_subset);//default: trapezioidal
-  /*Rcout<<"w2: "<<std::endl;
-  for(const auto& ww:w2)
-  {
-    Rcout<<ww<<" ";
-  }
-  Rcout<<std::endl;*/
 
   //sigma
   std::vector<double> sub_diag_vec(sub_diag.begin(), sub_diag.end());
@@ -493,10 +421,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   for (int i = 0; i < reconst_fcts.size(); ++i) {//argvalsO should be of size reconst_fcts (observed_period in myfpca)
     // Numerical integration for calculation of eigenvalues
     std::vector<double> w = quadWeights(argvalsO[i]);
-    for(const auto& ww:w)
-    {
-      Rcout<<ww<<" ";
-    }
     Rcout<<std::endl;
     arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
     arma::mat Wsqrt = arma::diagmat(arma::sqrt(w_arma));
@@ -511,7 +435,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
     // CovOO
     arma::mat VO = Wsqrt * cov_est.submat(locO,locO) * Wsqrt;
-    //Rcout<<"dimensioni ok"<<std::endl;
     arma::vec evaluesO;
     arma::mat eigenvectorsO;
     arma::eig_sym(evaluesO, eigenvectorsO, VO);
@@ -538,8 +461,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     }
 
     arma::mat efunctionsO_i = Winvsqrt * eigenvectorsO.cols(0, npcO);
-    //Rcout<<"dimensioni ok 2"<<std::endl;
-    arma::vec evaluesO_i = evaluesO.subvec(0, npcO);
+    arma::vec evaluesO_i = evaluesO.subvec(0, npcO); //giusto
 
     arma::mat D_inv = arma::diagmat(1/evaluesO_i);
     arma::mat Z = efunctionsO_i;
@@ -566,7 +488,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       arma::mat Zcur = Z.submat(arma::span(obs_locO[0],obs_locO[obs_locO.size()-1]),arma::span(0, npcO - 1*CEScores*size));//controlla
       arma::mat ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO - 1*CEScores*size),arma::span(0, npcO - 1*CEScores*size)));
       arma::vec CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * Y_cent_arma(no_na);//arma::vec sono vettori colonna
-      //Rcout<<"dimensioni ok 3"<<std::endl;
       CE_scoresO[i] = CE_scoresO_i; //corretto a meno di un segno
       Rcout<<CE_scoresO_i<<" ";
     } else {
@@ -579,14 +500,11 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     {
       arma::vec column = efunctionsO_i_sub.col(j);
       double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);
-      //Rcout<<"came back from trapezioidal_rule"<<std::endl;
       scoresO[i] = integral;
     }
-    //Rcout<<"definitivo"<<std::endl;
 
     //reconstructive eigenfunctions
-    NumericMatrix efun_reconst_i(argvals.size(), npcO + 1*(!true));
-    //Rcout<<"nrow efunc_reoconst_i: "<<efun_reconst_i.nrow()<<" ncol: "<<efun_reconst_i.ncol()<<" ";
+    NumericMatrix efun_reconst_i(argvals.size(), npcO + 1*(!size));//giusto
     efun_reconst_i.fill(NA_REAL);     
     arma::mat rows = cov_est.rows(locO);
     for(int k = 0; k < efun_reconst_i.ncol(); ++k)
@@ -597,10 +515,13 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
           efun_reconst_i(r,k) = integral/evaluesO_i[k];
       }
     }
+    /*Rcout<<"evaluesOi in eigen"<<std::endl;
+    Rcout<<evaluesO_i;
+    Rcout<<"reconst eigen f in eigen:"<<std::endl;
+    Rcout<<efun_reconst_i;*/
 
     efun_reconst[i] = efun_reconst_i;
     
-    // Store other results
     arma::vec muO_i(locO.size());
     //argvalsO_i;
     for(arma::uword j = 0; j < locO.size(); ++j){
@@ -610,7 +531,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     evaluesOO[i] = evaluesO_i;
     efunctionsO[i] = efunctionsO_i;
   }
-  //mancano cose da ritornare a myfpca
   //vedi se settare data member poi da myfpca a seconda dell uso che ne deve fare KLAl
   return std::make_tuple(muO, scoresO, CE_scoresO, efunctions, efunctionsO,
                         efun_reconst, evalues, evaluesOO, obs_argvalsO, locOO,sigma2, cov_est);
@@ -691,12 +611,13 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       {npc_index_i = indices[0]; npcO = npc_index_i;}
     
   }//forse in realtà è giusto rifare questi calcoli da capo perchè sto usando Y_pred??
-
+  //Rcout<<"npcO in gcvKL: "<<npcO<<std::endl;
   arma::mat efunctionsO_i = Winvsqrt * eigenvectorsO.cols(0, npcO);//dovrebbe esseere giusto aver sottratto 1 prima
-  arma::vec evaluesO_i = evaluesO.subvec(0, npcO);
+  arma::vec evaluesO_i = evaluesO.subvec(0, npcO);//giusto
   arma::mat D_inv = arma::diagmat(1/evaluesO_i);
   arma::mat Z = efunctionsO_i;
-
+  /*Rcout<<"evaluesO_i"<<std::endl;
+  Rcout<<evaluesO_i;*/
   //reconstructive eigenfunctions
   NumericMatrix efun_reconst_i(argvals.size(), npcO + 1);//+1 perchè era un indice
   efun_reconst_i.fill(NA_REAL);    
@@ -708,7 +629,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
         double integral = trapezioidal_rule(efunctionsO_i.col(k) % c, arma::conv_to<arma::vec>::from(argvalsO_i));
         efun_reconst_i(r,k) = integral/evaluesO_i[k];
     }
-  }
+  }//giusto
 
   if(too_few)
   {
@@ -725,13 +646,16 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   NumericMatrix rss_mat(Y_pred.nrow(),npcO+1);
   rss_mat.fill(NA_REAL);//se sono arrivata fino a qua c'erano righe complete
   for(int i = 0; i < rss_mat.nrow(); ++i){
-    NumericVector Y_cent = Y_pred(i,_) - mu;//aggiungi mu alle cose ricevute da gcvKneipLiebl. forse devo creare mu come riga, non so se cosi fa la differenza
+    NumericVector Y_cent = Y_pred(i,_) - mu;
     arma::uvec obs_locO(Y_pred.ncol() - sum(is_na(Y_cent)));//giusto
     for(arma::uword j = 0; j < obs_locO.size(); ++j){
       obs_locO[j] = j;
     }
-    arma::vec y_cent_arma = as<arma::vec>(Y_cent);//controlla che questa inizializzazione abba senso
-    y_cent_arma = y_cent_arma(obs_locO);
+    arma::vec y_cent_arma(obs_locO.n_elem);
+    for(const auto& u:obs_locO)
+    {
+      y_cent_arma[u] = Y_cent[u];
+    }
     NumericVector fragmO_presmooth;//rimane empty se non entra in KLAl4
 
     if(method == "KLAl4")//else è KLAl5 e lo salta
@@ -744,7 +668,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       {
         y.push_back(Y_pred(i,u));//stats::na.omit((Y.pred[i,]))
       }
-      //DataFrame data = DataFrame::create(Named("x")=x, Named("y") = y);
+      
       Environment stats = Environment::namespace_env("stats");
       Function smooth_spline = stats["smooth.spline"];
       //smooth splines
@@ -772,28 +696,15 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
             CE_scoresO_i[i] = 0;
         }
       }else{
-        Zcur = Z.rows(obs_locO);
-        //Rcout<<"Zcur"<<Zcur<<std::endl;
-        ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv);
-        //Rcout<<"y_cent_i"<<y_cent_arma<<std::endl;
-        //Rcout<<"ztzsdinv"<<ZtZ_sD_inv;
-        CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//giusti a meno di un segno
+        Zcur = Z.rows(obs_locO);//giusto a meno di segni
+        ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv);//giusto a meno di segni
+        CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//giusto a meno di segni
       }
       for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro e parte da 1, io avevo usato npcO come indice quindi tolto 1
       {
-        Rcout<<"for"<<std::endl;
-        /*Rcout<<"CE:"<<std::endl;
-        Rcout<<CE_scoresO_i;*/
-        //Rcout<<"len of CEscores_O_i: "<<CE_scoresO_i.n_elem<<std::endl;
-        //Rcout<<"CE_scoresO_i: "<<CE_scoresO_i;
         List result_tmp = reconstKL_fun(mu, argvals, locO, 
                                         CE_scoresO_i, efun_reconst_i, fragmO_presmooth, k);
         arma::vec y_reconst = result_tmp["y_reconst"];//sbagliato perchè sono sbagliate le reconstructive eigen function
-        /*Rcout<<"y_reconst: ";
-        for(const auto& rr:y_reconst)
-        {
-          Rcout<<rr<<" ";
-        }*/
         Rcout<<std::endl;
         double sum = 0.0;
         for(const auto&m : locM)

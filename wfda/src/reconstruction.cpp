@@ -391,12 +391,6 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
     mu = NumericVector(d,0.0);
   }
   m_mu = mu;
-  /*Rcout<<"mu \t";
-  for(const auto&m:mu)
-  {
-    Rcout<<m<<"\t";
-  }
-  Rcout<<std::endl;*/
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov
   std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
@@ -430,8 +424,8 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   m_evaluesOO = std::get<7>(ret);
   m_obs_argvalsO = std::get<8>(ret);
   m_locO = std::get<9>(ret);
-  m_sigma2 = std::get<10>(ret);
-  m_cov_est = std::get<11>(ret);
+  m_sigma2 = std::get<10>(ret);//giusto
+  m_cov_est = std::get<11>(ret);//giusto
 
 }
 
@@ -495,7 +489,7 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
     if(K == 0)//per ora ho dato il default a 0, ma poi mettere Nullable
     {
       std::string method = "KLAl4";//pev = 0.99
-      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i,m_muO[i], m_locO[i], m_cov_est, m_sigma2, method, 0.99));
+      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_muO[i], m_locO[i], m_cov_est, m_sigma2, method, 0.99));
     }else{K_vec.push_back(K);}
 
 
