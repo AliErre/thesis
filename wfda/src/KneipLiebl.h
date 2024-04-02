@@ -27,7 +27,7 @@ eigen(const std::vector<double>&, const std::vector<std::vector<double>>&,const 
       bool, const IntegerVector&);
 
 int gcvKneipLiebl(const NumericVector&, const std::pair<std::vector<double>, NumericMatrix>&, 
-                  const std::vector<double>&, const NumericVector&, const arma::uvec&,
+                  const std::vector<double>&, const arma::uvec&,
                   const arma::mat&, double, const std::string&, double pev = 0.99);
 #endif
 

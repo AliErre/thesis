@@ -540,7 +540,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
 //per ora ritorna un int ma forse K è double, controlla
 int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, NumericMatrix>& Y_preprocessed, 
-                  const std::vector<double>& argvalsO_i, const NumericVector& muO, const arma::uvec& locO,
+                  const std::vector<double>& argvalsO_i, const arma::uvec& locO,
                   const arma::mat& cov_est, double sigma2, const std::string& method, double pev)
 {
   Rcout<<"gcvkl"<<std::endl;
@@ -581,7 +581,6 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   bool too_few = false;
   //select subset for the presmoothing. observations >= 5 <- secondo me questo in R era inutile
   if(Y_pred.ncol() - locM.size() < 5){Rcout<<"not enough observations for the presmoothing"<<std::endl; too_few = true;}
-  //notazione: muO è m_muO[i]
 
   std::vector<double> w = quadWeights(argvalsO_i);
   arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
@@ -610,14 +609,11 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       {npc_index_i = indices[0]; npcO = npc_index_i;}
     
   }//forse in realtà è giusto rifare questi calcoli da capo perchè sto usando Y_pred??
-  //Rcout<<"npcO in gcvKL: "<<npcO<<std::endl;
   arma::mat efunctionsO_i = Winvsqrt * eigenvectorsO.cols(0, npcO);//dovrebbe esseere giusto aver sottratto 1 prima
   arma::vec evaluesO_i = evaluesO.subvec(0, npcO);//giusto
   arma::mat D_inv = arma::diagmat(1/evaluesO_i);
   arma::mat Z = efunctionsO_i;
-  /*Rcout<<"evaluesO_i"<<std::endl;
-  Rcout<<evaluesO_i;*/
-  //reconstructive eigenfunctions
+
   NumericMatrix efun_reconst_i(argvals.size(), npcO + 1);//+1 perchè era un indice
   efun_reconst_i.fill(NA_REAL);    
   arma::mat rows = cov_est.rows(locO);
@@ -659,9 +655,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
 
     if(method == "KLAl4")//else è KLAl5 e lo salta
     {
-      Rcout<<"if"<<std::endl;
       NumericVector y;
-      
       NumericVector x = wrap(argvalsO_i); //argvalsO_i[obs_locO] = argvalsO_i per costruzione!
       for(const auto&u: obs_locO)
       {
@@ -704,8 +698,6 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
         List result_tmp = reconstKL_fun(mu, argvals, locO, 
                                         CE_scoresO_i, efun_reconst_i, fragmO_presmooth, k);
         arma::vec y_reconst = result_tmp["y_reconst"];
-        Rcout<<"y_reconstr"<<std::endl;
-        Rcout<<y_reconst;
         double sum = 0.0;
         for(const auto&m : locM)
         {
@@ -716,8 +708,6 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
 
     }
   }//end for
-  Rcout<<"rss_mat"<<std::endl;
-  Rcout<<rss_mat;
   std::vector<double> gcv_k_vec; gcv_k_vec.reserve(npcO+1);
   for(size_t i = 0; i < npcO + 1; ++i)
   {
@@ -727,7 +717,6 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       sum += rss_mat(r,i);//colsum
     }
     double denom = (1-(i+1)/static_cast<double>(Y_pred.nrow())) * (1-(i+1)/static_cast<double>(Y_pred.nrow()));//ncompl = Y_pred.nrow()
-    Rcout<<"denom: "<<denom<<std::endl;
     gcv_k_vec.push_back(sum/denom);//giusto
   }
   auto it_min = std::min_element(gcv_k_vec.begin(), gcv_k_vec.end());
