@@ -26,12 +26,11 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
     reconstr.subvec(max + 1, argvals.size() - 1) += fragmO[fragmO.size() - 1] - reconstr[max];
     reconstr(locO) = as<arma::vec>(fragmO);//giusto
   }
-  stop("check till here");
   arma::vec weights_reconst;
-  if(cov.is_empty() || evaluesO.is_empty())
+  if(cov.is_empty() || evaluesO.is_empty())//here goes if KLAl4
   {
     weights_reconst = arma::vec();
-  }else{
+  }else{//here goes if KLAl5
     std::vector<size_t> locM;
     locM.reserve(argvals.size());
     for(size_t i = 0; i < argvals.size(); ++i){
@@ -700,12 +699,13 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
         ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv);//giusto a meno di segni
         CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//giusto a meno di segni
       }
-      for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro e parte da 1, io avevo usato npcO come indice quindi tolto 1
+      for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro
       {
         List result_tmp = reconstKL_fun(mu, argvals, locO, 
                                         CE_scoresO_i, efun_reconst_i, fragmO_presmooth, k);
-        arma::vec y_reconst = result_tmp["y_reconst"];//sbagliato perchè sono sbagliate le reconstructive eigen function
-        Rcout<<std::endl;
+        arma::vec y_reconst = result_tmp["y_reconst"];
+        Rcout<<"y_reconstr"<<std::endl;
+        Rcout<<y_reconst;
         double sum = 0.0;
         for(const auto&m : locM)
         {
@@ -716,13 +716,8 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
 
     }
   }//end for
-  /*Rcout<<"rss_mat: ";
-  for(int i = 0; i < rss_mat.nrow(); ++i)
-  {
-    for(int j = 0; j < rss_mat.ncol(); ++j)
-      Rcout<<rss_mat(i,j)<<" ";
-    Rcout<<std::endl;
-  }*/
+  Rcout<<"rss_mat"<<std::endl;
+  Rcout<<rss_mat;
   std::vector<double> gcv_k_vec; gcv_k_vec.reserve(npcO+1);
   for(size_t i = 0; i < npcO + 1; ++i)
   {
@@ -731,18 +726,10 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
     {
       sum += rss_mat(r,i);//colsum
     }
-    Rcout<<"npcO: "<<npcO<<std::endl;
-    double denom = (1-(i+1)/Y_pred.nrow()) * (1-(i+1)/Y_pred.nrow());//ncompl = Y_pred.nrow()
+    double denom = (1-(i+1)/static_cast<double>(Y_pred.nrow())) * (1-(i+1)/static_cast<double>(Y_pred.nrow()));//ncompl = Y_pred.nrow()
     Rcout<<"denom: "<<denom<<std::endl;
-    gcv_k_vec.push_back(sum/denom);
+    gcv_k_vec.push_back(sum/denom);//giusto
   }
-  Rcout<<"gcv vec: ";
-  for(const auto& g:gcv_k_vec)
-  {
-    Rcout<<g<<" ";
-  }
-  stop("initialized gcv vector");
-
   auto it_min = std::min_element(gcv_k_vec.begin(), gcv_k_vec.end());
   auto index_min = std::distance(gcv_k_vec.begin(), it_min);
   // K = index_min + 1, perchè K in R parte da 1, non può essere 0
