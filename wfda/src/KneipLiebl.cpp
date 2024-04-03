@@ -7,10 +7,7 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
                    const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k,
                    const arma::vec& evaluesO = arma::vec(), const std::vector<double>& argvalsO = std::vector<double>(), const arma::mat& cov = arma::mat())
 {
-  //Rcout<<"reconstKL_fun"<<std::endl;
-  //non so se esportarla, o se la esporto devo avere a disposzione tutti sti dati comunque
   int K = std::min(k, efunc_r.ncol());
-  //Rcout<<"K: "<<K<<std::endl;
   arma::mat efunc_r_arma = as<arma::mat>(efunc_r);
   arma::vec mu_arma = as<arma::vec>(mu);//giusto
   arma::mat extracted_scores = arma::reshape(scoresO.subvec(0, K - 1), 1, K);
@@ -22,40 +19,38 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
     //arma::uword min = locO.min();//locO min sarà sempre 0?
     //reconstr.subvec(0, min) += fragmO[0] - reconstr[min];
     arma::uword max = locO.max();
-    //Rcout<<"reconstr_max"<<reconstr[max]<<std::endl;
     reconstr.subvec(max + 1, argvals.size() - 1) += fragmO[fragmO.size() - 1] - reconstr[max];
     reconstr(locO) = as<arma::vec>(fragmO);//giusto
   }
   arma::vec weights_reconst;
-  if(cov.is_empty() || evaluesO.is_empty())//here goes if KLAl4
+  if(cov.is_empty() || evaluesO.is_empty())
   {
     weights_reconst = arma::vec();
-  }else{//here goes if KLAl5
-    std::vector<size_t> locM;
-    locM.reserve(argvals.size());
-    for(size_t i = 0; i < argvals.size(); ++i){
-      if(arma::find(locO == i, 1).is_empty())
-        locM.push_back(i);
+  }else{
+    arma::uvec locM(argvals.size()-locO.size());
+    size_t elem = 0;
+    for(size_t i = locO.max() + 1; i < argvals.size(); ++i){
+        locM[elem++] = i;
     }
-    locM.shrink_to_fit();
     arma::vec diag_cov = arma::diagvec(cov);
-    arma::vec v2_reconstr = diag_cov.subvec(locM[0],locM[locM.size()-1]);
+    arma::mat efunc_r_submat = efunc_r_arma.cols(0, K-1) % efunc_r_arma.cols(0, K-1);//element wise
+    arma::vec e = efunc_r_submat * evaluesO.subvec(0, K-1).t() ;
+    Rcout<<locM;
+    Rcout<<e.n_rows<<" "<<e.n_cols;
+    arma::vec v2_reconstr = diag_cov.elem(locM) - e.elem(locM);
     arma::vec v_hat_reconstr(v2_reconstr.size());
     if(arma::all(v2_reconstr > 0)){
       arma::vec v_reconstr = arma::sqrt(v2_reconstr);
       double h0 = 0.2*arma::max(v_reconstr);
       std::transform(v_reconstr.begin(), v_reconstr.end(), v_hat_reconstr.begin(),
-                     [h0](double value){return (h0 < value ? value : 0);});
+                     [h0](double value){ return (h0 < value ? value :h0);});
 
     }else{
       v_hat_reconstr.fill(0.01);
     }
     weights_reconst.resize(argvals.size());
     weights_reconst.fill(1);
-    for(size_t i = 0; i < v_hat_reconstr.size(); ++i)
-    {
-      weights_reconst[locM[i]] -= v_hat_reconstr[i]/std::pow(v2_reconstr[i],0.5);
-    }
+    weights_reconst.elem(locM) -= v_hat_reconstr / arma::sqrt(diag_cov.elem(locM));
   }
   return List::create(Named("y_reconst") = reconstr, Named("w_reconst") = weights_reconst);//ritorna anche argvals ma mi sembra una cosa scema visto che è l'argomento con cui è chiamata
 }
@@ -84,7 +79,6 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
                                                        bool binning, int max_bins){
 
   //crea una copia
-  //Rcout<<"irreg2mat"<<std::endl;
   std::vector<std::tuple<int, double, double>> y_data_complete(find_complete_tuple(y_data));
   std::set<double> bins; 
 
@@ -140,7 +134,6 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
 std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,const NumericMatrix& Y_tilde,const NumericVector& Y_first,
                          int d, int i, int nbasis)
 {
-  //Rcout<<"smooth_cov"<<std::endl;
   NumericMatrix cov_mean(d, d);
   NumericMatrix cov_count(d,d);
   cov_count.fill(0.0);
@@ -148,7 +141,7 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
   cov_sum.fill(0.0);
 
 
-  // Calculate cov.mean
+  // Ccov.mean
   for (int idx = 0; idx < i; ++idx) {
 
     IntegerVector obs_points = seq_len(d) - 1;//0 based index
@@ -168,7 +161,7 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
     }
   }
 
-  // Calculate G.0
+  // G.0
   NumericMatrix G0(d, d);
   for (int row = 0; row < d; ++row) {
     for (int col = 0; col < d; ++col) {
@@ -190,7 +183,7 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
   }
 
 
-  // Calculate npc.0
+  // npc.0
   NumericVector row_vec(d * Y_first.size());
   int index = 0;
   for(const auto& y : Y_first) {
@@ -213,13 +206,10 @@ std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_second,
   std::string formula = "G0 ~ te(row_vec, col_vec, k = " + std::to_string(nbasis) + ")";
   Formula f = Formula(formula);
   DataFrame data = DataFrame::create(_["G0"] = g0, _["row_vec"] = row_vec, _["col_vec"] = col_vec);
-  //stop("before fitting gam");
   List gamModel = gam(_["formula"] = f, _["data"] = data, _["weights"] = weights);//fit gam model
-  //Rcout<<"fitted gam model in smooth_cov"<<std::endl;
   DataFrame newdata = DataFrame::create(Named("row_vec") = row_vec, Named("col_vec") = col_vec);//data for prediction
 
   NumericVector predictions = predict_gam(gamModel, _["newdata"] = newdata);
-
   //reshape predictions vector into matrix
   NumericMatrix npc0(d, d);
   std::copy(predictions.begin(), predictions.end(), npc0.begin());
@@ -294,7 +284,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
            double pev, const NumericMatrix& Y_pred, 
            const NumericVector& mu, const NumericVector& diagG0, bool CEScores, const IntegerVector& reconst_fcts) {
   
-  //Rcout<<"eigen"<<std::endl;
   // numerical integration for calculation of eigenvalues
   std::vector<double> w = quadWeights(argvals);//default is trapezioidal
   arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
@@ -317,15 +306,14 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     arma::uword npc_index;
 
     if (sum_pos > 0) {
-      arma::vec cumsum_pos = arma::cumsum(evalues(arma::find(evalues > 0))); // Cumulative sum of positive eigenvalues
-      double threshold = pev * sum_pos; // Calculate the threshold value
+      arma::vec cumsum_pos = arma::cumsum(evalues(arma::find(evalues > 0))); 
+      double threshold = pev * sum_pos;
       arma::uvec indices = arma::find(cumsum_pos >= threshold);
 
       if(!indices.is_empty())//in realtà non dovrebbe essere mai empty
         {npc_index = indices[0]; npc = static_cast<int>(npc_index);}
     }
   }
-  //Rcout<<"npc eigen: "<<npc<<std::endl;
 
   //only select eigenvectors and corresponding eigenvalues up to npc-th
   arma::mat selected_eigenvectors = eigenvectors.cols(0, npc); //i primi due hanno segni opposti
@@ -343,7 +331,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   int T1_min = std::distance(argvals.begin(), it); //in R which returns an index
 
   double upper_bound = argvals[argvals.size() - 1] - 0.25 * T_len;
-  //Rcout<<"upper bound "<<upper_bound;
   auto it_max = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
   if(it_max != argvals.begin())
   {
@@ -352,7 +339,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
 
   int T1_max = std::distance(argvals.begin(), it_max);// = 0 se sono tutti maggiori di upper_bound. Ma non dovrebbe succedee
   arma::vec diag_diff = as<arma::vec>(diagG0) - arma::diagvec(cov_est);
-  //Rcout<<"T1_min "<<T1_min<<"\t T1_max "<<T1_max<<std::endl;
   arma::vec sub_diag = diag_diff.subvec(T1_min, T1_max);
   std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max + 1);
 
@@ -361,7 +347,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   //sigma
   std::vector<double> sub_diag_vec(sub_diag.begin(), sub_diag.end());
   double sigma2 = std::max(weighted_mean(sub_diag_vec, w2), 0.0);//lei aveva messo na.rm ma secondo me non dovrebbero esserci NA
-  //Rcout<<"sigma2: "<<sigma2<<std::endl;
   //computations for observed fragments
   //cambia queste definizioni NOTA BENE NOTA BENE NOTA BENE?
   List muO(reconst_fcts.size()), scoresO(reconst_fcts.size()), CE_scoresO(reconst_fcts.size()),
@@ -372,7 +357,6 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   for (int i = 0; i < reconst_fcts.size(); ++i) {//argvalsO should be of size reconst_fcts (observed_period in myfpca)
     // Numerical integration for calculation of eigenvalues
     std::vector<double> w = quadWeights(argvalsO[i]);
-    //Rcout<<std::endl;
     arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
     arma::mat Wsqrt = arma::diagmat(arma::sqrt(w_arma));
     arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));
@@ -380,7 +364,7 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
     arma::uvec locO(argvalsO[i].size());//0-indexed. su R è 1-indexed
     for(arma::uword j = 0; j < locO.size(); ++j)
     {
-      locO[j] = j; //è come match() su R, per la natura di argvalsO e argvals
+      locO[j] = j; //match() su R
     }
     locOO[i] = locO;
 
@@ -402,8 +386,8 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       arma::uword npc_index_i;
 
       if (sum_pos > 0) {
-        arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0))); // Cumulative sum of positive eigenvalues
-        double threshold = pev * sum_pos_O; // Calculate the threshold value
+        arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0)));
+        double threshold = pev * sum_pos_O;
         arma::uvec indices = arma::find(cumsum_pos_O >= threshold);
 
         if(!indices.is_empty())//in realtà non dovrebbe essere mai empty
@@ -439,10 +423,8 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
       arma::mat ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO - 1*CEScores*size),arma::span(0, npcO - 1*CEScores*size)));
       arma::vec CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * Y_cent_arma(no_na);//arma::vec sono vettori colonna
       CE_scoresO[i] = CE_scoresO_i; //corretto a meno di un segno
-      //Rcout<<CE_scoresO_i<<" ";
     } else {
       CE_scoresO[i] = NA_REAL;
-      //Rcout<<NA_REAL<<" ";
     }
 
     arma::mat efunctionsO_i_sub = efunctionsO_i.rows(obs_locO);
@@ -490,7 +472,6 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
                   const std::vector<double>& argvalsO_i, const arma::uvec& locO,
                   const arma::mat& cov_est, double sigma2, const std::string& method, double pev)
 {
-  //Rcout<<"gcvkl"<<std::endl;
   NumericMatrix Y(clone(Y_preprocessed.second));
   std::vector<int> complete_rows;
   complete_rows.reserve(Y.nrow());
@@ -548,8 +529,8 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   if (!NumericVector::is_na(pev)) { //riguardare default di pev, in R è NULL, qua sto facendo come se fosse NA_REAL
     size_t npc_index_i = 0;
 
-    arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0))); // Cumulative sum of positive eigenvalues
-    double threshold = pev * sum_pos_O; // Calculate the threshold value
+    arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0)));
+    double threshold = pev * sum_pos_O;
     arma::uvec indices = arma::find(cumsum_pos_O >= threshold);
 
     if(!indices.is_empty())//in realtà non dovrebbe essere mai empty
@@ -577,7 +558,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   {
     size_t npc_index_i;
     arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0)));
-    double threshold = 0.9 * sum_pos_O; // Calculate the threshold value
+    double threshold = 0.9 * sum_pos_O;
     arma::uvec indices = arma::find(cumsum_pos_O >= threshold);
 
     if(!indices.is_empty())//in realtà non dovrebbe essere mai empty
@@ -613,47 +594,42 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       Function smooth_spline = stats["smooth.spline"];
       //smooth splines
       List smooth_fit = smooth_spline(_["y"] = y, _["x"] = x);//S3 object
-      //Rcout<<"smooth_spline in  gcv"<<std::endl;
       Function predict = stats["predict"];
       List result = predict(smooth_fit, _["x"] = x);
-      //Rcout<<"predict in gcv"<<std::endl;
       fragmO_presmooth = result["y"];
     }
-    
+    //if method == "KLAl4" || method == "KLAl5"
     arma::mat Zcur, ZtZ_sD_inv; arma::vec CE_scoresO_i;
-    if(method == "KLAl4" || method == "KLAl5")
-    {
-      if(sigma2 == 0.0){sigma2 = 1e-6;}
-      if(obs_locO.size() < npcO + 1){
-        size_t npcO_new = obs_locO.size(); //ora è una lunghezza, non indice
-        Zcur = Z.submat(arma::span(obs_locO[0], obs_locO[obs_locO.size()-1]),arma::span(0, npcO_new - 1));//controlla
-        ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO_new - 1),arma::span(0, npcO_new - 1)));
-        CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//arma::vec sono vettori colonna, controlla dimensioni
-        size_t new_size = CE_scoresO_i.size() + npcO + 1 - npcO_new;
-        CE_scoresO_i.resize(new_size);
+    if(sigma2 == 0.0){sigma2 = 1e-6;}
+    if(obs_locO.size() < npcO + 1){
+      size_t npcO_new = obs_locO.size(); //ora è una lunghezza, non indice
+      Zcur = Z.submat(arma::span(obs_locO[0], obs_locO[obs_locO.size()-1]),arma::span(0, npcO_new - 1));//controlla
+      ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO_new - 1),arma::span(0, npcO_new - 1)));
+      CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//arma::vec sono vettori colonna, controlla dimensioni
+      size_t new_size = CE_scoresO_i.size() + npcO + 1 - npcO_new;
+      CE_scoresO_i.resize(new_size);
 
-        for (size_t i = CE_scoresO_i.size() - (npcO + 1 - npcO_new); i < CE_scoresO_i.size(); ++i) {
-            CE_scoresO_i[i] = 0;
-        }
-      }else{
-        Zcur = Z.rows(obs_locO);//giusto a meno di segni
-        ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv);//giusto a meno di segni
-        CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//giusto a meno di segni
+      for (size_t i = CE_scoresO_i.size() - (npcO + 1 - npcO_new); i < CE_scoresO_i.size(); ++i) {
+          CE_scoresO_i[i] = 0;
       }
-      for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro
-      {
-        List result_tmp = reconstKL_fun(mu, argvals, locO, 
-                                        CE_scoresO_i, efun_reconst_i, fragmO_presmooth, k);
-        arma::vec y_reconst = result_tmp["y_reconst"];
-        double sum = 0.0;
-        for(const auto&m : locM)
-        {
-          sum += (y_reconst[m] - Y_c(i,m))*(y_reconst[m] - Y_c(i,m));//std::pow è inefficiente, cambiarlo anche da altre parti
-        }
-        rss_mat(i,k-1) = sum;
-      }
-
+    }else{
+      Zcur = Z.rows(obs_locO);//giusto a meno di segni
+      ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv);//giusto a meno di segni
+      CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * y_cent_arma;//giusto a meno di segni
     }
+    for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro
+    {
+      List result_tmp = reconstKL_fun(mu, argvals, locO, 
+                                      CE_scoresO_i, efun_reconst_i, fragmO_presmooth, k);
+      arma::vec y_reconst = result_tmp["y_reconst"];
+      double sum = 0.0;
+      for(const auto&m : locM)
+      {
+        sum += (y_reconst[m] - Y_c(i,m))*(y_reconst[m] - Y_c(i,m));//std::pow è inefficiente, cambiarlo anche da altre parti
+      }
+      rss_mat(i,k-1) = sum;
+    }
+
   }//end for
   std::vector<double> gcv_k_vec; gcv_k_vec.reserve(npcO+1);
   for(size_t i = 0; i < npcO + 1; ++i)

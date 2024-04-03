@@ -15,7 +15,7 @@ class ReconstructionBase {
 
         // specialize
         virtual ~ReconstructionBase() = default; // polymorphism => need virtual destructor
-        virtual List reconstructCurve(double, bool, const NumericVector&, int, int, int) = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
+        virtual List reconstructCurve(Nullable<double>, bool, const Nullable<NumericVector>&, Nullable<int>, Nullable<int>, Nullable<int>) = 0; //i,alpha,K,t_points,nRegGrid,maxBins 
         //devo aggiungere i default
         // same for all derived
         std::vector<int> find_obs_inc(const NumericMatrix&) const; //farne una free function?
@@ -40,7 +40,7 @@ class ReconstructionKraus : public ReconstructionBase{
         ReconstructionKraus(const NumericMatrix& Y) : ReconstructionBase(Y) {};
 
         //override
-        List reconstructCurve(double, bool, const NumericVector&, int, int, int) override;//metodo che sarà chiamato da R
+        List reconstructCurve(Nullable<double> alpha, bool all, const Nullable<NumericVector>& periods_nullable, Nullable<int> K, Nullable<int> maxBins, Nullable<int> nRegGrid_nullable) override;//metodo che sarà chiamato da R
 
 };
 
@@ -50,7 +50,7 @@ class ReconstructionExtrapolation : public ReconstructionBase{
         ReconstructionExtrapolation(const NumericMatrix& Y) : ReconstructionBase(Y) {};
 
         //override
-        List reconstructCurve(double, bool, const NumericVector&, int, int, int) override;//metodo che sarà chiamato da R
+        List reconstructCurve(Nullable<double>, bool, const Nullable<NumericVector>&, Nullable<int>, Nullable<int>, Nullable<int>) override;//metodo che sarà chiamato da R
         //NumericVector è T.periods in R
 
 };
@@ -59,9 +59,9 @@ class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un doubl
     public: 
         ReconstructionKLAl(const NumericMatrix& Y):
                            ReconstructionBase(Y) {}; 
-        List reconstructCurve(double, bool, const NumericVector&, int, int, int) override;
+        List reconstructCurve(Nullable<double>, bool, const Nullable<NumericVector>&, Nullable<int>, Nullable<int>, Nullable<int>) override;
         //NumericVector è t.points, K, nRegGrid, maxBins
-        void myfpca(const std::vector<std::vector<double>>&, const std::vector<std::vector<double>>&, bool, bool, int, bool);
+        void myfpca(const std::vector<std::vector<double>>&, const std::vector<std::vector<double>>&, bool, bool, Nullable<int>, bool);
         //Ly, Lu, reconst_fcts,CEscores, center, maxBins 
 
     private:

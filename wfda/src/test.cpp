@@ -9,6 +9,16 @@ arma::vec eigenvalues(arma::mat V) {
 }
 
 // [[Rcpp::export]]
+NumericMatrix inprod_cpp(List& fd1, List& fd2, NumericVector& range, List& w)
+{
+  Environment fda = Environment::namespace_env("fda");
+  Function inprod = fda["inprod"];
+  Function int2Lfd = fda["int2Lfd"];
+  NumericMatrix ret = inprod(_["fdobj1"] = fd1, _["fdobj2"] = fd2, _["Lfdobj1"] = int2Lfd(0), _["Lfdobj2"] = int2Lfd(0), _["rng"] = range, _["wtfd"] = w);
+  return ret;
+}
+
+// [[Rcpp::export]]
 List vec(const NumericMatrix& G0, const NumericVector& row_vec, const NumericVector& col_vec, const NumericVector& weights)
 {
   Environment mgcv = Environment::namespace_env("mgcv");

@@ -106,8 +106,10 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
 }
 
 
-List ReconstructionKraus::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector(), int K = 0, int maxBins = 0, int nRegGrid = 0) {
+List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
 //dovrei avere già mean_vec e cov_mat nella classe appena chiamo il costruttore
+  double alpha;
+  if(alpha_nullable.isNotNull()){alpha = as<double>(alpha_nullable);} 
   int n = m_Y.ncol();
   IntegerVector reconst_fcts;
   //if all = TRUE -> ricostruiscile tutte
@@ -156,7 +158,7 @@ List ReconstructionKraus::reconstructCurve(double alpha = 0.0, bool all = FALSE,
     LogicalVector O_bool = !M_bool;
     GCV.set_bool(M_bool);
     
-    if(alpha == 0.0)//R_NilValue = NULL in R, in attesa di capire come gestire NULL, metto 0.0 di default
+    if(alpha_nullable.isNull())//R_NilValue = NULL in R, in attesa di capire come gestire NULL, metto 0.0 di default
     {
       double max_bound = 0.0;
       for(int i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
@@ -192,8 +194,17 @@ List ReconstructionKraus::reconstructCurve(double alpha = 0.0, bool all = FALSE,
 
 //extrapolation method for reconstruction from last observed period
 //cambiare i default a nullable
-List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all = FALSE,const NumericVector& periods = NumericVector(),int K = 0, int maxBins = 0, int nRegGrid = 0) {
-  int r = periods.length(); //m_Y.nrow()double, bool, const NumericVector&, int, int, int
+List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods_nullable = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
+  int r;
+  NumericVector periods;
+  if(periods_nullable.isNotNull()){
+    periods = periods_nullable.get();
+    r = periods.length();
+  }else{
+    stop("for extrapolation method you must provide a vector");
+  }
+  
+   //m_Y.nrow()double, bool, const NumericVector&, int, int, int
   int n = m_Y.ncol();
   double sum = 0.0;
   NumericVector mean_slope(r-1); //slope media per ogni riga
@@ -237,7 +248,7 @@ List ReconstructionExtrapolation::reconstructCurve(double alpha = 0.0, bool all 
 
 //mettere maxBins default Nullable
 void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, const std::vector<std::vector<double>>& Lu, 
-                                bool scores = false, bool center = true, int max_bins = 1000, bool all = false){
+                                bool scores = false, bool center = true, Nullable<int> max_bins_nullable = R_NilValue, bool all = false){
   //int n = Ly.size();
   std::vector<size_t> id_vec = gen(Lu);
   std::vector<std::tuple<int, double, double>> ydata;
@@ -251,7 +262,7 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   }
 
   constexpr int nbasis = 10;//vedi se ha senso mettere qua constexpr
-  max_bins = (max_bins == 0)? 1000 : max_bins; //cambia il default, non deve essere 0 ma NULL
+  int max_bins = (max_bins_nullable.isNull())? 1000 : as<int>(max_bins_nullable); 
   //bool useSymm = false;//se sono sempre false finsico sempre negli stessi branch
   //bool makePD = false;
 
@@ -379,9 +390,15 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
 }
 
 
-List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, const NumericVector& t_points = NumericVector(), int K = 0, int maxBins = 0, int nRegGrid = 0)
+List ReconstructionKLAl::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods_nullable = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid_nullable = R_NilValue)
 { 
   //Rcout<<"Im KLAL"<<std::endl;
+  NumericVector t_points;
+  if(periods_nullable.isNull()){
+    stop("you must provide a vector of t.points");
+  }else{
+    t_points = periods_nullable.get();
+  }
   int n = m_Y.ncol();
   int r = m_Y.nrow();
   std::vector<std::vector<double>> Y_list(n);
@@ -435,11 +452,11 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
       stop("The range of obs_argvalsO of the fragment must equal the range of argvalsO");
     }
     
-    if(K == 0)//per ora ho dato il default a 0, ma poi mettere Nullable
+    if(K.isNull())//per ora ho dato il default a 0, ma poi mettere Nullable
     {
       std::string method = "KLAl4";//pev = 0.99
       K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_locO[i], m_cov_est, m_sigma2, method, 0.99));
-    }else{K_vec.push_back(K);}
+    }else{K_vec.push_back(as<int>(K));}
 
 
     NumericVector y = (m_Y_preprocessed.second)(reconst_fcts[i],_);
@@ -463,8 +480,9 @@ List ReconstructionKLAl::reconstructCurve(double alpha = 0.0, bool all = FALSE, 
     W_reconst_list[i] = result["w_reconst"];
     U_reconst_list[i] = x;
   }
-  if(nRegGrid != 0)
+  if(nRegGrid_nullable.isNotNull())
   {
+    int nRegGrid = as<int>(nRegGrid_nullable);
     Function spline = stats["spline"];
     double start = m_Y_preprocessed.first[0];
     double end = m_Y_preprocessed.first[m_Y_preprocessed.first.size()-1];

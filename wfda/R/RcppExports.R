@@ -9,6 +9,10 @@ eigenvalues <- function(V) {
     .Call(`_wfda_eigenvalues`, V)
 }
 
+inprod_cpp <- function(fd1, fd2, range, w) {
+    .Call(`_wfda_inprod_cpp`, fd1, fd2, range, w)
+}
+
 vec <- function(G0, row_vec, col_vec, weights) {
     .Call(`_wfda_vec`, G0, row_vec, col_vec, weights)
 }
