@@ -4,10 +4,13 @@
 //R's memory management model doesn't directly align with C++ smart pointers
 ReconstructionBase* reconstructionFactory(const std::string& id, const NumericMatrix& Y) {
     if (id == "Kraus") {
-        return new ReconstructionKraus(Y);//must use raw pointers to be compatible to R
-    } else if (id == "KLAl") {
-        return new ReconstructionKLAl(Y);
-    }else {
+        return new ReconstructionKraus(id, Y);//must use raw pointers to be compatible to R
+    } else if (id == "KLAl" || id == "KLNoAl") {
+        return new ReconstructionKL(id, Y);
+    } else if (id == "Extrapolation"){
+        return new ReconstructionExtrapolation(id, Y);//passare al costruttore anche id e risolvo tutti i prob
+    }
+    else {
         return nullptr;
     }
 }

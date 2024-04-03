@@ -5,12 +5,11 @@
 #include "optimize.h"
 #include "reconstKraus.h"
 using namespace Rcpp;
-
 class ReconstructionBase {
     public:
     //nota: references point the memory area of the R object!!
-        ReconstructionBase(const NumericMatrix& Y) 
-                          : m_Y(Y)
+        ReconstructionBase(const std::string& method, const NumericMatrix& Y) 
+                          : m_method(method), m_Y(Y) 
                           { m_reconst_fcts = find_obs_inc(Y); meanRows(); covMatrix();}
 
         // specialize
@@ -25,8 +24,11 @@ class ReconstructionBase {
         // getter e setter mean e cov
         NumericVector mean() const { return m_mean; } //beware wrap() copies the object -> heavy when data is big
         NumericMatrix cov() const {return m_cov;} //returns value computed by covKraus
+        //since it's needed both for klal and klnoal and I dont want to duplicate code
+        
 
     protected:
+        std::string m_method;
         NumericMatrix m_Y; // curves.train in R
         std::vector<int> m_reconst_fcts; //vector of indices of curves to reconstruct 
         NumericVector m_mean; //capire se mettere return type NumericVector
@@ -37,7 +39,7 @@ class ReconstructionBase {
 class ReconstructionKraus : public ReconstructionBase{
     public:
         //constructor for Kraus
-        ReconstructionKraus(const NumericMatrix& Y) : ReconstructionBase(Y) {};
+        ReconstructionKraus(const std::string& method, const NumericMatrix& Y) : ReconstructionBase(method, Y) {};
 
         //override
         List reconstructCurve(Nullable<double> alpha, bool all, const Nullable<NumericVector>& periods_nullable, Nullable<int> K, Nullable<int> maxBins, Nullable<int> nRegGrid_nullable) override;//metodo che sarà chiamato da R
@@ -47,7 +49,7 @@ class ReconstructionKraus : public ReconstructionBase{
 class ReconstructionExtrapolation : public ReconstructionBase{
     public:
         //constructor for Kraus
-        ReconstructionExtrapolation(const NumericMatrix& Y) : ReconstructionBase(Y) {};
+        ReconstructionExtrapolation(const std::string& method, const NumericMatrix& Y) : ReconstructionBase(method, Y) {};
 
         //override
         List reconstructCurve(Nullable<double>, bool, const Nullable<NumericVector>&, Nullable<int>, Nullable<int>, Nullable<int>) override;//metodo che sarà chiamato da R
@@ -55,16 +57,15 @@ class ReconstructionExtrapolation : public ReconstructionBase{
 
 };
 
-class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un double o un int in R
+class ReconstructionKL : public ReconstructionBase{//capisci se K era un double o un int in R
     public: 
-        ReconstructionKLAl(const NumericMatrix& Y):
-                           ReconstructionBase(Y) {}; 
+        ReconstructionKL(const std::string& method, const NumericMatrix& Y) : ReconstructionBase(method, Y){}; 
         List reconstructCurve(Nullable<double>, bool, const Nullable<NumericVector>&, Nullable<int>, Nullable<int>, Nullable<int>) override;
         //NumericVector è t.points, K, nRegGrid, maxBins
-        void myfpca(const std::vector<std::vector<double>>&, const std::vector<std::vector<double>>&, bool, bool, Nullable<int>, bool);
         //Ly, Lu, reconst_fcts,CEscores, center, maxBins 
-
-    private:
+        void myfpca(std::vector<std::vector<double>>&, const std::vector<std::vector<double>>&, 
+                    bool, bool, Nullable<int>, bool);
+    private: 
         std::pair<std::vector<double>, NumericMatrix> m_Y_preprocessed;
         std::vector<std::vector<double>> m_observed_period;
         arma::mat m_cov_est;
@@ -79,7 +80,9 @@ class ReconstructionKLAl : public ReconstructionBase{//capisci se K era un doubl
         List m_evaluesOO;
         List m_obs_argvalsO;
         List m_locO;
-        double m_sigma2;
+        double m_sigma2;        
+
 };
+
 
 #endif

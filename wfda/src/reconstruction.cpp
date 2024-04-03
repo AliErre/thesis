@@ -204,7 +204,6 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
     stop("for extrapolation method you must provide a vector");
   }
   
-   //m_Y.nrow()double, bool, const NumericVector&, int, int, int
   int n = m_Y.ncol();
   double sum = 0.0;
   NumericVector mean_slope(r-1); //slope media per ogni riga
@@ -246,8 +245,7 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
 }
 
 
-//mettere maxBins default Nullable
-void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, const std::vector<std::vector<double>>& Lu, 
+void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::vector<std::vector<double>>& Lu, 
                                 bool scores = false, bool center = true, Nullable<int> max_bins_nullable = R_NilValue, bool all = false){
   //int n = Ly.size();
   std::vector<size_t> id_vec = gen(Lu);
@@ -331,11 +329,9 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   NumericVector mu;
   if(center)
   {
-    //Rcout<<"entered center"<<std::endl;
     NumericMatrix Y_mat = Y.second;
     NumericVector vec(Y_mat.begin(), Y_mat.end());
     Environment mgcv = Environment::namespace_env("mgcv");    
-    //Rcout<<"imported namespace mgcv"<<std::endl;
     Function gam = mgcv["gam"];
     Function predict_gam = mgcv["predict.gam"];
 
@@ -346,11 +342,9 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
     Formula f = Formula(formula_str);
 
     List gam0 = gam(_["formula"] = f, _["data"] = data);
-    //Rcout<<"called gam function"<<std::endl;
 
     DataFrame newdata = DataFrame::create(Named("d.vec") = yfirst);
     mu = predict_gam(gam0, _["newdata"] = newdata);
-    //Rcout<<"called predict_gam function"<<std::endl;
 
     
     for (int row = 0; row < i; ++row) {
@@ -365,7 +359,6 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov
   std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
-  //Rcout<<"called smooth_cov and returned"<<std::endl;
   NumericMatrix npc0 = cov_smooth.first; //giusto
   NumericVector diagG0 = cov_smooth.second; //giusto
 
@@ -390,9 +383,8 @@ void ReconstructionKLAl::myfpca(const std::vector<std::vector<double>>& Ly, cons
 }
 
 
-List ReconstructionKLAl::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods_nullable = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid_nullable = R_NilValue)
+List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods_nullable = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid_nullable = R_NilValue)
 { 
-  //Rcout<<"Im KLAL"<<std::endl;
   NumericVector t_points;
   if(periods_nullable.isNull()){
     stop("you must provide a vector of t.points");
@@ -454,26 +446,27 @@ List ReconstructionKLAl::reconstructCurve(Nullable<double> alpha = R_NilValue, b
     
     if(K.isNull())//per ora ho dato il default a 0, ma poi mettere Nullable
     {
-      std::string method = "KLAl4";//pev = 0.99
-      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_locO[i], m_cov_est, m_sigma2, method, 0.99));
+      //std::string method = "KLAl4";//pev = 0.99
+      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_locO[i], m_cov_est, m_sigma2, m_method, 0.99));
     }else{K_vec.push_back(as<int>(K));}
 
+    NumericVector fragmO_presmooth = NumericVector();
+    if(m_method == "KLAl"){
+        NumericVector y = (m_Y_preprocessed.second)(reconst_fcts[i],_);
+        LogicalVector no_na = !is_na(y);
+        NumericVector y_c = y[no_na];
+        NumericVector obs_argvals = wrap(m_obs_argvalsO[i]); //wrap the arma::vec
+        NumericVector argvalsO_i_vector = wrap(argvalsO_i);
 
-    NumericVector y = (m_Y_preprocessed.second)(reconst_fcts[i],_);
-    LogicalVector no_na = !is_na(y);
-    NumericVector y_c = y[no_na];
-    NumericVector obs_argvals = wrap(m_obs_argvalsO[i]); //wrap the arma::vec
-    NumericVector argvalsO_i_vector = wrap(argvalsO_i);
+        Function smooth_spline = stats["smooth.spline"];
+        List smooth_fit = smooth_spline(_["y"] = y_c, _["x"] = obs_argvals);
 
-    Function smooth_spline = stats["smooth.spline"];
-    List smooth_fit = smooth_spline(_["y"] = y_c, _["x"] = obs_argvals);
-    //Rcout<<"called stats::smooth_spline in reconstructCurve()"<<std::endl;
+        Function predict = stats["predict"];
+        List fragmO_presmooth_list = predict(smooth_fit, _["x"] = argvalsO_i_vector);
+        fragmO_presmooth = fragmO_presmooth_list["y"];
+    }
 
-    Function predict = stats["predict"];
-    //Rcout<<"called predict in reconstructCurve()"<<std::endl;
-    List fragmO_presmooth_list = predict(smooth_fit, _["x"] = argvalsO_i_vector);
-    NumericVector fragmO_presmooth = fragmO_presmooth_list["y"];
-
+    //fragmO_presmooth empty if method == "KLNoAl"
     List result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], m_efun_reconst[i], fragmO_presmooth, K_vec[i],
                                 m_evaluesOO[i], m_observed_period[i], m_cov_est);
     Y_reconstr_list[i] = result["y_reconst"];
@@ -502,6 +495,6 @@ List ReconstructionKLAl::reconstructCurve(Nullable<double> alpha = R_NilValue, b
     }
   }
   NumericVector K_vec_ = wrap(K_vec);
-  return List::create(Named("Y_reocnst_list") = Y_reconstr_list, Named("U_reconst_list") = U_reconst_list, 
-                      Named("W_reconst_list") = W_reconst_list, Named("K") = K_vec_);
+  return List::create(_["Y_reocnst_list"] = Y_reconstr_list, _["U_reconst_list"] = U_reconst_list, 
+                      _["W_reconst_list"] = W_reconst_list, _["K"] = K_vec_);
 }

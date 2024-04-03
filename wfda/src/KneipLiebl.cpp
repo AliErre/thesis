@@ -35,8 +35,6 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
     arma::vec diag_cov = arma::diagvec(cov);
     arma::mat efunc_r_submat = efunc_r_arma.cols(0, K-1) % efunc_r_arma.cols(0, K-1);//element wise
     arma::vec e = efunc_r_submat * evaluesO.subvec(0, K-1).t() ;
-    Rcout<<locM;
-    Rcout<<e.n_rows<<" "<<e.n_cols;
     arma::vec v2_reconstr = diag_cov.elem(locM) - e.elem(locM);
     arma::vec v_hat_reconstr(v2_reconstr.size());
     if(arma::all(v2_reconstr > 0)){
