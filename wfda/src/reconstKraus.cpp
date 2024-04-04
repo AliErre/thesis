@@ -56,8 +56,9 @@ List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
 
   //for(auto& elem:hi_scaled){Rcout<<"hi_scaled: "<<elem<<std::endl;}
 
-  return List::create(Named("X_cent_reconst_vec") = NumericVector(X_cent_reconst_vec.begin(), X_cent_reconst_vec.end()), //arma::vec
-                      Named("df") = df,//double
-                      Named("alpha") = alpha,//double
-                      Named("hi") = NumericVector(hi_scaled.begin(),hi_scaled.end()));//arma::vec
+  return List::create(_["X_cent_reconst_vec"] = NumericVector(X_cent_reconst_vec.begin(), X_cent_reconst_vec.end()), //arma::vec
+                      _["df"] = df,//double
+                      _["alpha"] = alpha,//double
+                      _["hi"] = hi_scaled,
+                      _["M_bool"] = M_bool);//arma::vec
 }

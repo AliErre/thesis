@@ -127,7 +127,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
     column++;
   }
   NumericMatrix W_reconst_mat(r,reconst_fcts.length());//initialized filled with 0s
-  //std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//posso fare così grazie a come sono salvate le NumericMatrix in memoria
+  std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//posso fare così grazie a come sono salvate le NumericMatrix in memoria
 
   std::vector<int> nonNA_fcts; //mask in R
   nonNA_fcts.reserve(n);//metterlo come data member?
@@ -173,14 +173,12 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
   //reconstKraus["X_cent_reconst_vec"] is an arma::vec
     NumericVector X_reconst = resultKraus["X_cent_reconst_vec"];
     X_reconst_mat(_,column) = X_reconst + m_mean;
-    df_vec.push_back(resultKraus["df"]);//check
-    // W_reconst_mat[M_bool_vec,i]
-    NumericVector hi = resultKraus["hi"];
-    for(int i = 0; i < r;i++){
-      if(M_bool[i])//gli altri pesi rimangono ad 1
-        W_reconst_mat(i,column) = 1 - hi[i-hi.length()-1];//controlla hi[] che sia giusto
-      else
-        W_reconst_mat(i,column) = 1;
+    df_vec[column] = resultKraus["df"];//check
+    arma::vec M_bool_arma = resultKraus["M_bool"];
+    arma::vec hi = resultKraus["hi"];
+    for(const auto& m:M_bool_arma)
+    {
+      W_reconst_mat(m, column) = 1 - hi[m - (r - hi.size())];
     }
     column++;
   }
