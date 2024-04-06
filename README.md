@@ -1,5 +1,7 @@
-library(wfda)<br>
-help("wfda-package")<br>
-help("reconstruction")<br>
-help("reconstruct")<br>
-help("reconstruct_wrapper")<br>
+```
+library(wfda)
+help("wfda-package")
+help("reconstruction")
+help("reconstruct")
+help("reconstruct_wrapper")
+```
