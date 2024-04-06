@@ -1,5 +1,5 @@
-Line library(wfda)
-Line help("wfda-package")
-Line help("reconstruction")
-Line help("reconstruct")
-Line help("reconstruct_wrapper")
+library(wfda)<br>
+Line help("wfda-package")<br>
+Line help("reconstruction")<br>
+Line help("reconstruct")<br>
+Line help("reconstruct_wrapper")<br>
