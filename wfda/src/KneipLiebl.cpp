@@ -3,9 +3,10 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
-List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, 
-                   const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k,
-                   const arma::vec& evaluesO = arma::vec(), const std::vector<double>& argvalsO = std::vector<double>(), const arma::mat& cov = arma::mat())
+std::tuple<arma::vec, arma::vec> 
+reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, 
+              const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k,
+              const arma::vec& evaluesO = arma::vec(), const std::vector<double>& argvalsO = std::vector<double>(), const arma::mat& cov = arma::mat())
 {
   int K = std::min(k, efunc_r.ncol());
   arma::mat efunc_r_arma = as<arma::mat>(efunc_r);
@@ -50,7 +51,7 @@ List reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, 
     weights_reconst.fill(1);
     weights_reconst.elem(locM) -= v_hat_reconstr / arma::sqrt(diag_cov.elem(locM));
   }
-  return List::create(Named("y_reconst") = reconstr, Named("w_reconst") = weights_reconst);//ritorna anche argvals ma mi sembra una cosa scema visto che è l'argomento con cui è chiamata
+  return std::make_tuple(reconstr, weights_reconst);
 }
 
 
@@ -278,9 +279,13 @@ double trapezioidal_rule(const arma::vec& values, const arma::vec& knots){
   return integral;
 }
 
-std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List, double, arma::mat> eigen(const std::vector<double>& argvals, const std::vector<std::vector<double>>& argvalsO,const NumericMatrix& npc_0, 
+std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::vector<arma::mat>, std::vector<NumericMatrix>, 
+           arma::vec,std::vector<arma::vec>, std::vector<arma::vec>, std::vector<arma::uvec>, double, arma::mat> 
+           eigen(const std::vector<double>& argvals, const std::vector<std::vector<double>>& argvalsO,
+           const NumericMatrix& npc_0, 
            double pev, const NumericMatrix& Y_pred, 
-           const NumericVector& mu, const NumericVector& diagG0, bool CEScores, const IntegerVector& reconst_fcts) {
+           const NumericVector& mu, const NumericVector& diagG0, bool CEScores, 
+           const IntegerVector& reconst_fcts) {
   
   // numerical integration for calculation of eigenvalues
   std::vector<double> w = quadWeights(argvals);//default is trapezioidal
@@ -347,9 +352,12 @@ std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List,
   double sigma2 = std::max(weighted_mean(sub_diag_vec, w2), 0.0);//lei aveva messo na.rm ma secondo me non dovrebbero esserci NA
   //computations for observed fragments
   //cambia queste definizioni NOTA BENE NOTA BENE NOTA BENE?
-  List muO(reconst_fcts.size()), scoresO(reconst_fcts.size()), CE_scoresO(reconst_fcts.size()),
-           evaluesOO(reconst_fcts.size()), efunctionsO(reconst_fcts.size()), efun_reconst(reconst_fcts.size()),
-           obs_argvalsO(reconst_fcts.size()), locOO(reconst_fcts.size());
+  std::vector<arma::vec> muO(reconst_fcts.size()), obs_argvalsO(reconst_fcts.size()), evaluesOO(reconst_fcts.size());
+  std::vector<double> scoresO(reconst_fcts.size());
+  std::vector<arma::mat> efunctionsO(reconst_fcts.size());
+  std::vector<NumericMatrix> efun_reconst(reconst_fcts.size());
+  std::vector<arma::uvec> locOO(reconst_fcts.size());
+  List CE_scoresO(reconst_fcts.size());
   
   
   for (int i = 0; i < reconst_fcts.size(); ++i) {//argvalsO should be of size reconst_fcts (observed_period in myfpca)
@@ -617,9 +625,9 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
     }
     for(size_t k = 1; k <= npcO + 1; ++k)//perchè seq_len include l'estremo destro
     {
-      List result_tmp = reconstKL_fun(mu, argvals, locO, 
+      std::tuple<arma::vec, arma::vec> result_tmp = reconstKL_fun(mu, argvals, locO, 
                                       CE_scoresO_i, efun_reconst_i, fragmO_presmooth, k);
-      arma::vec y_reconst = result_tmp["y_reconst"];
+      arma::vec y_reconst = std::get<0>(result_tmp);
       double sum = 0.0;
       for(const auto&m : locM)
       {

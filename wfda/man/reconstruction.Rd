@@ -39,8 +39,9 @@
         -1.693828, -2.046650, -0.7654954, NA, NA,
         -2.267157, -2.127552, -0.7805399, NA, NA
     ), nrow = 15, byrow = TRUE)
-    t.points <- c(0.00, 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50)
-    reconstruction <- Module("reconstruction", PACKAGE = "wfda")
+    t.points <- c(0.00, 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 
+		2.25, 2.50, 2.75, 3.00, 3.25, 3.50)
+    reconstruction <- Rcpp::Module("reconstruction", PACKAGE = "wfda")
     ReconstructionBase <- reconstruction$ReconstructionBase
     object <- new(ReconstructionBase, "KLAl", matrix_data)  
 }

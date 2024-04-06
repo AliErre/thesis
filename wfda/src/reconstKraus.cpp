@@ -2,8 +2,9 @@
 using namespace Rcpp;
 //reconstructs the curve at index
 
-List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
-                      const NumericMatrix& cov_mat,unsigned index, double alpha) {
+std::tuple<NumericVector, double, double, arma::vec, arma::uvec> 
+reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
+                 const NumericMatrix& cov_mat,unsigned index, double alpha) {
   //fare un data member m_M_bool_matrix? nel caso non in questa funzione, ma in un metodo della classe ReconstrctionKraus 
   if( index < 0 || index > Y.ncol()-1){ stop("index value is not valid.");}
   arma::mat cov_mat_arma = as<arma::mat>(cov_mat);
@@ -54,10 +55,5 @@ List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
   }
 
   //for(auto& elem:hi_scaled){Rcout<<"hi_scaled: "<<elem<<std::endl;}
-
-  return List::create(_["X_cent_reconst_vec"] = NumericVector(X_cent_reconst_vec.begin(), X_cent_reconst_vec.end()), //arma::vec
-                      _["df"] = df,//double
-                      _["alpha"] = alpha,//double
-                      _["hi"] = hi_scaled,
-                      _["M_bool"] = M_bool);//arma::vec
+  return std::make_tuple(NumericVector(X_cent_reconst_vec.begin(), X_cent_reconst_vec.end()), df, alpha, hi_scaled, M_bool);
 }

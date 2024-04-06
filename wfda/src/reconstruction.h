@@ -69,16 +69,16 @@ class ReconstructionKL : public ReconstructionBase{//capisci se K era un double 
         std::vector<std::vector<double>> m_observed_period;
         arma::mat m_cov_est;
         NumericVector m_mu;
-        List m_muO;
-        List m_scoresO;
+        std::vector<arma::vec> m_muO;
+        std::vector<double> m_scoresO;
         List m_CE_scoresO;
         arma::mat m_efunctions;
-        List m_efunctionsO;
-        List m_efun_reconst;
+        std::vector<arma::mat> m_efunctionsO;
+        std::vector<NumericMatrix> m_efun_reconst;
         arma::vec m_evalues;
-        List m_evaluesOO;
-        List m_obs_argvalsO;
-        List m_locO;
+        std::vector<arma::vec> m_evaluesOO;
+        std::vector<arma::vec> m_obs_argvalsO;
+        std::vector<arma::uvec> m_locO;
         double m_sigma2;        
 
 };

@@ -12,7 +12,7 @@
     When not using the wrapper: first load the "reconstruction" module into the R session. Then use new() method to create an object of the exposed class.
 }
 \examples{
-reconstruction <- Module("reconstruction", PACKAGE = "wfda")
+reconstruction <- Rcpp::Module("reconstruction", PACKAGE = "wfda")
 }
 \author{
     Alice Ragonesi.

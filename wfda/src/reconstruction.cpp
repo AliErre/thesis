@@ -169,23 +169,23 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
       alpha_vec[column] = alpha;
     }
 
-    List resultKraus = reconstKraus_fun(m_Y, m_mean, m_cov, index, alpha_vec[column]);//forse dovrei cambiarla e passargli M_bool
+    std::tuple<NumericVector, double, double, arma::vec, arma::uvec> resultKraus = reconstKraus_fun(m_Y, m_mean, m_cov, index, alpha_vec[column]);//forse dovrei cambiarla e passargli M_bool
   //reconstKraus["X_cent_reconst_vec"] is an arma::vec
-    NumericVector X_reconst = resultKraus["X_cent_reconst_vec"];
+    NumericVector X_reconst = std::get<0>(resultKraus);
     X_reconst_mat(_,column) = X_reconst + m_mean;
-    df_vec[column] = resultKraus["df"];//check
-    arma::vec M_bool_arma = resultKraus["M_bool"];
-    arma::vec hi = resultKraus["hi"];
+    df_vec[column] = std::get<1>(resultKraus);//check
+    arma::uvec M_bool_arma = std::get<4>(resultKraus);
+    arma::vec hi = std::get<3>(resultKraus);
     for(const auto& m:M_bool_arma)
     {
       W_reconst_mat(m, column) = 1 - hi[m - (r - hi.size())];
     }
     column++;
   }
-  return(List::create(_["X_reconst_mat"] = X_reconst_mat,
+  return(List::create(_["Y_reconst"] = X_reconst_mat,
                       _["alpha"]         = alpha_vec, 
                       _["df"]            = df_vec,
-                      _["W_reconst_mat"] = W_reconst_mat)); 
+                      _["W_reconst"] = W_reconst_mat)); 
 
 }
 
@@ -237,7 +237,7 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
       Y_reconstruct(na,index) = last_observed_value + last_slope * (periods(na) - last_observed_period);
     }
   }
-  return List::create(_["Extrapolated_curves"] = wrap(Y_reconstruct),
+  return List::create(_["Y_reconst"] = wrap(Y_reconstruct),
                       _["mean_slopes"] = wrap(mean_slope));
 
 }
@@ -361,7 +361,8 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
   NumericVector diagG0 = cov_smooth.second; //giusto
 
   //numerical integration for calculation of eigenvalues (see Ramsay & Silverman, Ch. 8)
-  std::tuple<List, List, List, arma::mat, List, List, arma::vec, List, List, List, double, arma::mat> ret = eigen(Y.first, observed_period, npc0, 0.99, Y_pred, mu, diagG0, true, reconst_fcts);
+  std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::vector<arma::mat>, std::vector<NumericMatrix>, 
+           arma::vec,std::vector<arma::vec>, std::vector<arma::vec>, std::vector<arma::uvec>, double, arma::mat>  ret = eigen(Y.first, observed_period, npc0, 0.99, Y_pred, mu, diagG0, true, reconst_fcts);
   
   //fissa i nuovi data member
   
@@ -426,12 +427,12 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
   //myfpca setta dei data member. reonstructCurve() non può essere const
   myfpca(Y_list, U_list, false, true, maxBins, all);//all = false vuol dire che non deve ricostruire tutto
 
-  size_t length_reconst_fcts = m_obs_argvalsO.length();//per come è stata costruita in eigen è di dimensione pari a lunghezza reconst_fcts
+  size_t length_reconst_fcts = m_obs_argvalsO.size();//per come è stata costruita in eigen è di dimensione pari a lunghezza reconst_fcts
   std::vector<double> K_vec;
   K_vec.reserve(length_reconst_fcts);
-  List Y_reconstr_list(length_reconst_fcts);
-  List W_reconst_list(length_reconst_fcts);
-  List U_reconst_list(length_reconst_fcts);
+  std::vector<arma::vec> Y_reconstr_list(length_reconst_fcts);
+  std::vector<arma::vec> W_reconst_list(length_reconst_fcts);
+  std::vector<arma::vec> U_reconst_list(length_reconst_fcts);
   Environment stats = Environment::namespace_env("stats");
   NumericVector x = wrap(m_Y_preprocessed.first);
   for(size_t i = 0; i < length_reconst_fcts; ++i){
@@ -465,10 +466,11 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     }
 
     //fragmO_presmooth empty if method == "KLNoAl"
-    List result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], m_efun_reconst[i], fragmO_presmooth, K_vec[i],
-                                m_evaluesOO[i], m_observed_period[i], m_cov_est);
-    Y_reconstr_list[i] = result["y_reconst"];
-    W_reconst_list[i] = result["w_reconst"];
+    std::tuple<arma::vec, arma::vec> result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], 
+                                                            m_efun_reconst[i], fragmO_presmooth, K_vec[i],
+                                                            m_evaluesOO[i], m_observed_period[i], m_cov_est);
+    Y_reconstr_list[i] = std::get<0>(result);
+    W_reconst_list[i] =std::get<1>(result);
     U_reconst_list[i] = x;
   }
   if(nRegGrid_nullable.isNotNull())
@@ -488,11 +490,11 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     {
       NumericVector y = wrap(Y_reconstr_list[i]);
       List reconstr_on_grid = spline(_["y"] = y, _["x"] = x, _["xout"] = sequence);
-      Y_reconstr_list[i] = reconstr_on_grid["y"];
-      U_reconst_list[i] = reconstr_on_grid["x"];
+      Y_reconstr_list[i] = as<arma::vec>(reconstr_on_grid["y"]);
+      U_reconst_list[i] = as<arma::vec>(reconstr_on_grid["x"]);
     }
   }
   NumericVector K_vec_ = wrap(K_vec);
-  return List::create(_["Y_reocnst_list"] = Y_reconstr_list, _["U_reconst_list"] = U_reconst_list, 
+  return List::create(_["Y_reconst_list"] = Y_reconstr_list, _["U_reconst_list"] = U_reconst_list, 
                       _["W_reconst_list"] = W_reconst_list, _["K"] = K_vec_);
 }
