@@ -1,6 +1,6 @@
 #include <RcppArmadillo.h>
 using namespace Rcpp;
-// [[Rcpp::export]]
+/*// [[Rcpp::export]]*/
 arma::vec eigenvalues(arma::mat V) {
     // Compute eigenvalues of a symmetric matrix
     arma::vec eigvals = arma::eig_sym(V);
@@ -8,7 +8,7 @@ arma::vec eigenvalues(arma::mat V) {
     return eigvals;
 }
 
-// [[Rcpp::export]]
+/*// [[Rcpp::export]]*/
 NumericMatrix inprod_cpp(List& fd1, List& fd2, NumericVector& range, List& w)
 {
   Environment fda = Environment::namespace_env("fda");
@@ -18,7 +18,7 @@ NumericMatrix inprod_cpp(List& fd1, List& fd2, NumericVector& range, List& w)
   return ret;
 }
 
-// [[Rcpp::export]]
+/*// [[Rcpp::export]]*/
 List vec(const NumericMatrix& G0, const NumericVector& row_vec, const NumericVector& col_vec, const NumericVector& weights)
 {
   Environment mgcv = Environment::namespace_env("mgcv");
@@ -38,7 +38,7 @@ List vec(const NumericMatrix& G0, const NumericVector& row_vec, const NumericVec
   return gamModel;
 }
 
-// [[Rcpp::export]]
+/*// [[Rcpp::export]]*/
 List compute(Formula& f, NumericVector& Y, NumericVector& d_vec)
 {   
     Environment stats = Environment::namespace_env("stats");

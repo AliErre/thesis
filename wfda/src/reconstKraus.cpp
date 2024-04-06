@@ -1,12 +1,11 @@
 #include <RcppArmadillo.h>
-// [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
-//#include "reconstKraus.h"
 //reconstructs the curve at index
-// [[Rcpp::export]]
+
 List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec,
                       const NumericMatrix& cov_mat,unsigned index, double alpha) {
   //fare un data member m_M_bool_matrix? nel caso non in questa funzione, ma in un metodo della classe ReconstrctionKraus 
+  if( index < 0 || index > Y.ncol()-1){ stop("index value is not valid.");}
   arma::mat cov_mat_arma = as<arma::mat>(cov_mat);
   NumericVector X_cent_vec = Y(_,index) - mean_vec;//difference between NA and number is still NA, no need to take precautions
   arma::vec X_cent_vec_arma = as<arma::vec>(X_cent_vec);//as<arma::vec> converts NA_REAL to "Nan"

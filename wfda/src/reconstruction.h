@@ -21,9 +21,8 @@ class ReconstructionBase {
         IntegerVector reconst_fcts() const;//getter
         const NumericVector& meanRows(); //farne una free function?mettere return type NumericVector? penso sia meglio!!!
         const NumericMatrix& covMatrix(); //farne una free function?    
-        // getter e setter mean e cov
-        NumericVector mean() const { return m_mean; } //beware wrap() copies the object -> heavy when data is big
-        NumericMatrix cov() const {return m_cov;} //returns value computed by covKraus
+        const NumericVector& mean() const { return m_mean; } //beware wrap() copies the object -> heavy when data is big
+        const NumericMatrix& cov() const {return m_cov;} //returns value computed by covKraus
         //since it's needed both for klal and klnoal and I dont want to duplicate code
         
 

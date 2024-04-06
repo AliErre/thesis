@@ -106,7 +106,7 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
 }
 
 
-List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
+List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& t_points = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
 //dovrei avere già mean_vec e cov_mat nella classe appena chiamo il costruttore
   double alpha;
   if(alpha_nullable.isNotNull()){alpha = as<double>(alpha_nullable);} 
@@ -169,7 +169,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
       alpha_vec[column] = alpha;
     }
 
-    List resultKraus = reconstKraus_fun(m_Y, m_mean, m_cov,index, alpha_vec[column]);//forse dovrei cambiarla e passargli M_bool
+    List resultKraus = reconstKraus_fun(m_Y, m_mean, m_cov, index, alpha_vec[column]);//forse dovrei cambiarla e passargli M_bool
   //reconstKraus["X_cent_reconst_vec"] is an arma::vec
     NumericVector X_reconst = resultKraus["X_cent_reconst_vec"];
     X_reconst_mat(_,column) = X_reconst + m_mean;
@@ -191,11 +191,11 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
 
 
 //extrapolation method for reconstruction from last observed period
-List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods_nullable = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
+List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& t_points = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
   int r;
   arma::vec periods;
-  if(periods_nullable.isNotNull()){
-    periods = as<arma::vec>(periods_nullable.get());
+  if(t_points.isNotNull()){
+    periods = as<arma::vec>(t_points.get());
     r = periods.size();
   }else{
     stop("for extrapolation method you must provide a vector");
@@ -381,13 +381,13 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
 }
 
 
-List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& periods_nullable = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid_nullable = R_NilValue)
+List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& t_points = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid_nullable = R_NilValue)
 { 
-  NumericVector t_points;
-  if(periods_nullable.isNull()){
+  NumericVector t_points_;
+  if(t_points.isNull()){
     stop("you must provide a vector of t.points");
   }else{
-    t_points = periods_nullable.get();
+    t_points_ = t_points.get();
   }
   int n = m_Y.ncol();
   int r = m_Y.nrow();
@@ -408,7 +408,7 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
         if(!NumericVector::is_na(m_Y(j,i)))
           {
             keep.push_back(m_Y(j,i));
-            keep_t.push_back(t_points[j]);
+            keep_t.push_back(t_points_[j]);
           }
       }
       keep.shrink_to_fit();
@@ -417,7 +417,7 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     }else{
       NumericVector col = m_Y(_,i);
       keep = as<std::vector<double>>(col);
-      keep_t = as<std::vector<double>>(t_points);
+      keep_t = as<std::vector<double>>(t_points_);
     }
     U_list.push_back(keep_t);
     Y_list.push_back(keep);

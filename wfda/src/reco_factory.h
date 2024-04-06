@@ -1,7 +1,7 @@
 #ifndef RECONSTRUCTIONFACTORY_H
 #define RECONSTRUCTIONFACTORY_H
 
-#include "reconstruction.h" // contains the abstract base class and its subclasses
+#include "reconstruction.h"
 #include <memory>
 #include <string>
 

@@ -11,95 +11,10 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// reconstKraus_fun
-List reconstKraus_fun(const NumericMatrix& Y, const NumericVector& mean_vec, const NumericMatrix& cov_mat, unsigned index, double alpha);
-RcppExport SEXP _wfda_reconstKraus_fun(SEXP YSEXP, SEXP mean_vecSEXP, SEXP cov_matSEXP, SEXP indexSEXP, SEXP alphaSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericMatrix& >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< const NumericVector& >::type mean_vec(mean_vecSEXP);
-    Rcpp::traits::input_parameter< const NumericMatrix& >::type cov_mat(cov_matSEXP);
-    Rcpp::traits::input_parameter< unsigned >::type index(indexSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    rcpp_result_gen = Rcpp::wrap(reconstKraus_fun(Y, mean_vec, cov_mat, index, alpha));
-    return rcpp_result_gen;
-END_RCPP
-}
-// eigenvalues
-arma::vec eigenvalues(arma::mat V);
-RcppExport SEXP _wfda_eigenvalues(SEXP VSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type V(VSEXP);
-    rcpp_result_gen = Rcpp::wrap(eigenvalues(V));
-    return rcpp_result_gen;
-END_RCPP
-}
-// inprod_cpp
-NumericMatrix inprod_cpp(List& fd1, List& fd2, NumericVector& range, List& w);
-RcppExport SEXP _wfda_inprod_cpp(SEXP fd1SEXP, SEXP fd2SEXP, SEXP rangeSEXP, SEXP wSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List& >::type fd1(fd1SEXP);
-    Rcpp::traits::input_parameter< List& >::type fd2(fd2SEXP);
-    Rcpp::traits::input_parameter< NumericVector& >::type range(rangeSEXP);
-    Rcpp::traits::input_parameter< List& >::type w(wSEXP);
-    rcpp_result_gen = Rcpp::wrap(inprod_cpp(fd1, fd2, range, w));
-    return rcpp_result_gen;
-END_RCPP
-}
-// vec
-List vec(const NumericMatrix& G0, const NumericVector& row_vec, const NumericVector& col_vec, const NumericVector& weights);
-RcppExport SEXP _wfda_vec(SEXP G0SEXP, SEXP row_vecSEXP, SEXP col_vecSEXP, SEXP weightsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericMatrix& >::type G0(G0SEXP);
-    Rcpp::traits::input_parameter< const NumericVector& >::type row_vec(row_vecSEXP);
-    Rcpp::traits::input_parameter< const NumericVector& >::type col_vec(col_vecSEXP);
-    Rcpp::traits::input_parameter< const NumericVector& >::type weights(weightsSEXP);
-    rcpp_result_gen = Rcpp::wrap(vec(G0, row_vec, col_vec, weights));
-    return rcpp_result_gen;
-END_RCPP
-}
-// compute
-List compute(Formula& f, NumericVector& Y, NumericVector& d_vec);
-RcppExport SEXP _wfda_compute(SEXP fSEXP, SEXP YSEXP, SEXP d_vecSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Formula& >::type f(fSEXP);
-    Rcpp::traits::input_parameter< NumericVector& >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< NumericVector& >::type d_vec(d_vecSEXP);
-    rcpp_result_gen = Rcpp::wrap(compute(f, Y, d_vec));
-    return rcpp_result_gen;
-END_RCPP
-}
-// check
-NumericVector check(NumericVector& Y_first, int d);
-RcppExport SEXP _wfda_check(SEXP Y_firstSEXP, SEXP dSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector& >::type Y_first(Y_firstSEXP);
-    Rcpp::traits::input_parameter< int >::type d(dSEXP);
-    rcpp_result_gen = Rcpp::wrap(check(Y_first, d));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 RcppExport SEXP _rcpp_module_boot_reconstruction();
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_wfda_reconstKraus_fun", (DL_FUNC) &_wfda_reconstKraus_fun, 5},
-    {"_wfda_eigenvalues", (DL_FUNC) &_wfda_eigenvalues, 1},
-    {"_wfda_inprod_cpp", (DL_FUNC) &_wfda_inprod_cpp, 4},
-    {"_wfda_vec", (DL_FUNC) &_wfda_vec, 4},
-    {"_wfda_compute", (DL_FUNC) &_wfda_compute, 3},
-    {"_wfda_check", (DL_FUNC) &_wfda_check, 2},
     {"_rcpp_module_boot_reconstruction", (DL_FUNC) &_rcpp_module_boot_reconstruction, 0},
     {NULL, NULL, 0}
 };
