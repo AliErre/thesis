@@ -351,7 +351,6 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
   std::vector<double> sub_diag_vec(sub_diag.begin(), sub_diag.end());
   double sigma2 = std::max(weighted_mean(sub_diag_vec, w2), 0.0);//lei aveva messo na.rm ma secondo me non dovrebbero esserci NA
   //computations for observed fragments
-  //cambia queste definizioni NOTA BENE NOTA BENE NOTA BENE?
   std::vector<arma::vec> muO(reconst_fcts.size()), obs_argvalsO(reconst_fcts.size()), evaluesOO(reconst_fcts.size());
   std::vector<double> scoresO(reconst_fcts.size());
   std::vector<arma::mat> efunctionsO(reconst_fcts.size());

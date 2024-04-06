@@ -472,6 +472,8 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     Y_reconstr_list[i] = std::get<0>(result);
     W_reconst_list[i] =std::get<1>(result);
     U_reconst_list[i] = x;
+    Rcout<<i<<std::endl;
+    if(i == length_reconst_fcts - 1){stop("last");}
   }
   if(nRegGrid_nullable.isNotNull())
   {
