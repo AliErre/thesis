@@ -11,3 +11,5 @@ License: GPL (>= 2)
 Imports: methods, Rcpp (>= 1.0.12), RcppArmadillo (>= 0.10.5.0.0), mgcv, stats
 LinkingTo: Rcpp, RcppArmadillo
 Debug: true
+RoxygenNote: 7.3.1
+Encoding: UTF-8
