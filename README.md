@@ -26,7 +26,7 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
 }
 
 # Install the wfda package from GitHub
-devtools::install_github("username/wfda")
+devtools::install_github("AliErre/thesis/wfda")
 ```
 ## Usage
 ```R
