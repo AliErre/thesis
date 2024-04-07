@@ -1,7 +1,6 @@
 #include "gcv.h" 
 double gcv::value(double x){//gcvKrausFun
     int n = m_YY.ncol();
-    //Rcout<<"alpha: "<<x<<std::endl;
     NumericVector rss = NumericVector(n);
     double df = 0.0;
     for(int j=0; j < n ; ++j){
@@ -11,9 +10,8 @@ double gcv::value(double x){//gcvKrausFun
         for(int r = 0;r < m_M_bool.length() ;++r){
             if(m_M_bool[r]) 
             {
-                original[index] = m_YY(r,j);
+                original[index++] = m_YY(r,j);
                 m_YY(r,j) = NA_REAL;//nel codice è il ruolo di X_gcv
-                index++;
             } 
         }
         std::tuple<NumericVector, double, double, arma::vec, arma::uvec> result = reconstKraus_fun(m_YY, m_mean_gcv, m_cov_gcv, j, x);//x = alpha
@@ -22,8 +20,7 @@ double gcv::value(double x){//gcvKrausFun
         for(int r = 0;r < m_M_bool.length() ;++r){
             if(m_M_bool[r]) 
             {
-                m_YY(r,j) = original[index];
-                index++;
+                m_YY(r,j) = original[index++];
             } 
         }
         NumericVector X_cent_reconst_vec = std::get<0>(result);

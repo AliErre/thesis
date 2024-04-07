@@ -123,8 +123,8 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
   NumericMatrix X_reconst_mat(r,reconst_fcts.size());
   int column = 0;
   for(int& index: reconst_fcts){
-    X_reconst_mat(_,column) = m_Y(_,index);
-    column++;
+    X_reconst_mat(_,column++) = m_Y(_,index);
+
   }
   NumericMatrix W_reconst_mat(r,reconst_fcts.length());//initialized filled with 0s
   std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//posso fare così grazie a come sono salvate le NumericMatrix in memoria
@@ -142,8 +142,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
   NumericMatrix X_Compl_mat(r,nonNA_fcts.size());
   column = 0;
   for(auto& index: nonNA_fcts){
-    X_Compl_mat(_,column) = m_Y(_,index);
-    column++;
+    X_Compl_mat(_,column++) = m_Y(_,index);
   }
 
   NumericVector alpha_vec(reconst_fcts.size());
@@ -164,7 +163,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
       for(int i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
         max_bound += m_cov(i,i);
       }
-      alpha_vec[column] = optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound, false, 1e-3); //false -> minimization
+      alpha_vec[column] = optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound * n, false, 1e-4); //false -> minimization
     }else{
       alpha_vec[column] = alpha;
     }
@@ -472,8 +471,6 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     Y_reconstr_list[i] = std::get<0>(result);
     W_reconst_list[i] =std::get<1>(result);
     U_reconst_list[i] = x;
-    Rcout<<i<<std::endl;
-    if(i == length_reconst_fcts - 1){stop("last");}
   }
   if(nRegGrid_nullable.isNotNull())
   {

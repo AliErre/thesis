@@ -35,7 +35,7 @@ reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const
     }
     arma::vec diag_cov = arma::diagvec(cov);
     arma::mat efunc_r_submat = efunc_r_arma.cols(0, K-1) % efunc_r_arma.cols(0, K-1);//element wise
-    arma::vec e = efunc_r_submat * evaluesO.subvec(0, K-1).t() ;
+    arma::vec e = efunc_r_submat * evaluesO.subvec(0, K-1) ;
     arma::vec v2_reconstr = diag_cov.elem(locM) - e.elem(locM);
     arma::vec v_hat_reconstr(v2_reconstr.size());
     if(arma::all(v2_reconstr > 0)){
@@ -561,6 +561,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
 
   if(too_few)
   {
+    Rcout<<"too few. Threshold 0.9"<<std::endl;
     size_t npc_index_i;
     arma::vec cumsum_pos_O = arma::cumsum(evaluesO(arma::find(evaluesO > 0)));
     double threshold = 0.9 * sum_pos_O;

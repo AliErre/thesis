@@ -15,7 +15,6 @@
 \item{\code{nRegGrid} (optional): defaults to \code{NULL}.}
 }
 }
-\values{All of the methods return reconstructed curves. "Kraus", "KLAl" and "KLNoAl" return the computed weights. "Kraus" also returns the alpha computed withb gcv and the degrees of freedom. "Extrapolation" also returns the mean slopes.}
 \author{
 Alice Ragonesi}
 \source{
