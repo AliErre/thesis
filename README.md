@@ -6,9 +6,9 @@ The `wfda` package provides tools for the reconstruction of partially observed c
 
 The package includes a `ReconstructionBase` class, from which three other classes are derived: `Kraus`, `KLAl`, `KLNoAl`, and `Extrapolation`. The user selects the derived class by providing a string identifier. The possible values for this identifier are:
 
-- "Kraus": if \code{alpha} is NULL then it is set through gcv using the complete curves observations.
-- "KLAl": if \code{K} is NULL then it is set through gcv using the complete curves observations.
-- "KLNoAl": if \code{K} is NULL then it is set through gcv using the complete curves observations.
+- "Kraus": if `alpha` is `NULL` then it is set through gcv using the complete curves observations.
+- "KLAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
+- "KLNoAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
 - "Extrapolation"
 
 
