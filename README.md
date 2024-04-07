@@ -10,6 +10,7 @@ The package includes a `ReconstructionBase` class, from which three other classe
 - "KLAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
 - "KLNoAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
 - "Extrapolation"
+
 The vector t_points must be provided to every method except "Kraus".
 
 
