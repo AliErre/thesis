@@ -10,6 +10,7 @@ The package includes a `ReconstructionBase` class, from which three other classe
 - "KLAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
 - "KLNoAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
 - "Extrapolation"
+The vector t_points must be provided to every method except "Kraus".
 
 
 
@@ -46,7 +47,7 @@ extrapolationo <- new(ReconstructionBase, "Extrapolation", matrix_data)
 # call reconstruct method. Arguments: alpha, all, t_points, K, maxBins, nRegGrid
 klal <- klal$reconstruct(NULL, FALSE, t.points, NULL, NULL, NULL)
 klnoal <- klnoal$reconstruct(NULL, FALSE, t.points, NULL, NULL, NULL)
-kraus <- new(ReconstructionBase, "Kraus", matrix_data)
+kraus <- kraus$reconstruct(NULL, FALSE, NULL, NULL, NULL, NULL)
 extrapolationo <- extrapolationo$reconstruct(NULL, FALSE, t.points, NULL, NULL, NULL)
 
 # reconstruct_wrapper example. Missing arguments default to NULL.
