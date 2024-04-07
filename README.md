@@ -16,6 +16,8 @@ The vector t_points must be provided to every method except "Kraus".
 
 
 ## Installation
+### In case the repo is public
+This is valid only for when the repo will be made public.
 
 You can install the package directly from GitHub using the `devtools` package:
 
@@ -27,6 +29,39 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
 
 # Install the wfda package from GitHub
 devtools::install_github("AliErre/thesis/wfda")
+```
+
+### In case you've been given access as a contributor: set up Rcpp
+Since the `wfda` package uses Rcpp extensively, you need to ensure you have Rcpp installed and a compatible compiler set up. Here's how to prepare:
+
+- **Install Rtools**:
+  Rtools provides the necessary tools, including the C/C++ compiler, to build R packages with C++ code. You can download and install Rtools from the official website: [Rtools Download Page](https://cran.r-project.org/bin/windows/Rtools/).
+
+- **Set Up PATH Environment Variable**:
+  After installing Rtools, you need to add its bin directory to your PATH environment variable. This allows your system to locate the Rtools compiler when building packages. Here's how to do it on Windows:
+  - Search for "Environment Variables" in your computer's search bar and open the "Edit the system environment variables" option.
+  - Click on the "Environment Variables" button.
+  - In the "System variables" section, find the "Path" variable and click "Edit".
+  - Add the path to the Rtools bin directory (e.g., `C:\Rtools\bin`) to the list of paths. Make sure to separate it from other paths with a semicolon (`;`).
+
+### Building and Installing the Package
+
+3. Once you've cloned the repository and set up Rcpp, navigate to the `wfda` directory in your terminal.
+
+4. Use `devtools` to build and install the package:
+
+After you clone the repository and have a compiler (which Rtools provides), you can do the following:
+```R
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+install.packages("Rcpp")
+
+setwd("path_to_your_local_repo")
+Rcpp::compileAttributes()
+devtools::build()
+# devtools::check()
+install.packages("../wfda_1.0.tar.gz")
 ```
 ## Usage
 ```R
