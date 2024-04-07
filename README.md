@@ -48,8 +48,6 @@ Since the `wfda` package uses Rcpp extensively, you need to ensure you have Rcpp
 
 3. Once you've cloned the repository and set up Rcpp, navigate to the `wfda` directory in your terminal.
 
-4. Use `devtools` to build and install the package:
-
 After you clone the repository and have a compiler (which Rtools provides), you can do the following:
 ```R
 if (!requireNamespace("devtools", quietly = TRUE)) {
