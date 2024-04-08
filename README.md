@@ -28,7 +28,7 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
 }
 
 # Install the wfda package from GitHub
-devtools::install_github("AliErre/thesis/wfda")
+devtools::install_github("AliErre/thesis@alice/wfda")
 ```
 
 ### In case you've been given access as a contributor: set up Rcpp
