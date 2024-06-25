@@ -11,10 +11,49 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// try_list
+List try_list(const List& r);
+RcppExport SEXP _wfda_try_list(SEXP rSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const List& >::type r(rSEXP);
+    rcpp_result_gen = Rcpp::wrap(try_list(r));
+    return rcpp_result_gen;
+END_RCPP
+}
+// test_fda
+NumericMatrix test_fda(List& xxfdjk, List& betabasisj, List& betabasisk, NumericVector& range);
+RcppExport SEXP _wfda_test_fda(SEXP xxfdjkSEXP, SEXP betabasisjSEXP, SEXP betabasiskSEXP, SEXP rangeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List& >::type xxfdjk(xxfdjkSEXP);
+    Rcpp::traits::input_parameter< List& >::type betabasisj(betabasisjSEXP);
+    Rcpp::traits::input_parameter< List& >::type betabasisk(betabasiskSEXP);
+    Rcpp::traits::input_parameter< NumericVector& >::type range(rangeSEXP);
+    rcpp_result_gen = Rcpp::wrap(test_fda(xxfdjk, betabasisj, betabasisk, range));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sum_cpp
+RObject sum_cpp(arma::vec vec1);
+RcppExport SEXP _wfda_sum_cpp(SEXP vec1SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type vec1(vec1SEXP);
+    rcpp_result_gen = Rcpp::wrap(sum_cpp(vec1));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP _rcpp_module_boot_reconstruction();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_wfda_try_list", (DL_FUNC) &_wfda_try_list, 1},
+    {"_wfda_test_fda", (DL_FUNC) &_wfda_test_fda, 4},
+    {"_wfda_sum_cpp", (DL_FUNC) &_wfda_sum_cpp, 1},
     {"_rcpp_module_boot_reconstruction", (DL_FUNC) &_rcpp_module_boot_reconstruction, 0},
     {NULL, NULL, 0}
 };

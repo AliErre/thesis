@@ -1,6 +1,6 @@
 #include "gcv.h" 
 double gcv::value(double x){//gcvKrausFun
-    int n = m_YY.ncol();
+    int n = m_YY.ncol();//X_Compl_mat
     NumericVector rss = NumericVector(n);
     double df = 0.0;
     for(int j=0; j < n ; ++j){
@@ -11,7 +11,7 @@ double gcv::value(double x){//gcvKrausFun
             if(m_M_bool[r]) 
             {
                 original[index++] = m_YY(r,j);
-                m_YY(r,j) = NA_REAL;//nel codice è il ruolo di X_gcv
+                m_YY(r,j) = NA_REAL;//nel codice è il ruolo di  X_gcv[M_bool_vec] <- NA
             } 
         }
         std::tuple<NumericVector, double, double, arma::vec, arma::uvec> result = reconstKraus_fun(m_YY, m_mean_gcv, m_cov_gcv, j, x);//x = alpha
@@ -33,6 +33,5 @@ double gcv::value(double x){//gcvKrausFun
             {df = std::get<1>(result);}
     }
     double gcv = sum(rss)/(std::pow(1-df/n,2)); // std::pow() non è efficiente, farlo io
-    //Rcout<<"GCV metric: "<<gcv<<std::endl;
     return gcv;
 }

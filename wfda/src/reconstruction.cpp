@@ -163,7 +163,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
       for(int i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
         max_bound += m_cov(i,i);
       }
-      alpha_vec[column] = optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound * n, false, 1e-4); //false -> minimization
+      alpha_vec[column] = optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound * n, false, 0.0001220703); //false -> minimization
     }else{
       alpha_vec[column] = alpha;
     }
