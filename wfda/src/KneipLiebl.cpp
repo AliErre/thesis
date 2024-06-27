@@ -28,17 +28,13 @@ reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const
   {
     weights_reconst = arma::vec();
   }else{
-    arma::uvec locM(argvals.size()-locO.size());
-    size_t elem = 0;
-    for(size_t i = locO.max() + 1; i < argvals.size(); ++i){
-        locM[elem++] = i;
-    }
+    arma::uvec locM = arma::regspace<arma::uvec>(locO.max() + 1, argvals.size() - 1);
     arma::vec diag_cov = arma::diagvec(cov);
     arma::mat efunc_r_submat = efunc_r_arma.cols(0, K-1) % efunc_r_arma.cols(0, K-1);//element wise
     arma::vec e = efunc_r_submat * evaluesO.subvec(0, K-1) ;
     arma::vec v2_reconstr = diag_cov.elem(locM) - e.elem(locM);
     arma::vec v_hat_reconstr(v2_reconstr.size());
-    if(arma::all(v2_reconstr > 0)){
+    if(arma::all(v2_reconstr > 1e-14)){
       arma::vec v_reconstr = arma::sqrt(v2_reconstr);
       double h0 = 0.2*arma::max(v_reconstr);
       std::transform(v_reconstr.begin(), v_reconstr.end(), v_hat_reconstr.begin(),
@@ -51,7 +47,7 @@ reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const
     weights_reconst.fill(1);
     weights_reconst.elem(locM) -= v_hat_reconstr / arma::sqrt(diag_cov.elem(locM));
   }
-  return std::make_tuple(reconstr, weights_reconst);
+  return std::make_tuple(reconstr, weights_reconst);//metti un pair
 }
 
 
@@ -436,7 +432,7 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
     for(arma::uword j = 0; j < efunctionsO_i_sub.n_cols;++j)
     {
       arma::vec column = efunctionsO_i_sub.col(j);
-      double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);
+      double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);//check
       scoresO[i] = integral;
     }
 
@@ -515,19 +511,19 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   //select subset for the presmoothing. observations >= 5 <- secondo me questo in R era inutile
   if(Y_pred.ncol() - locM.size() < 5){Rcout<<"not enough observations for the presmoothing"<<std::endl; too_few = true;}
 
-  std::vector<double> w = quadWeights(argvalsO_i);
+  std::vector<double> w = quadWeights(argvalsO_i);//giusto
   arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
-  arma::mat Wsqrt = arma::diagmat(arma::sqrt(w_arma));
-  arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));
+  arma::mat Wsqrt = arma::diagmat(arma::sqrt(w_arma));//giusto
+  arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));//giusto
   // CovOO
-  arma::mat VO = Wsqrt * cov_est.submat(locO,locO) * Wsqrt;
+  arma::mat VO = Wsqrt * cov_est.submat(locO,locO) * Wsqrt;//giusto
   arma::vec evaluesO;  //in realtà evaluesO ed eigenvectorsO dovrei averceli già nei data member, devo passarli a gcv
   arma::mat eigenvectorsO;
   arma::eig_sym(evaluesO, eigenvectorsO, VO);//se li passo posso saltare questa parte
   arma::uvec sort_indices = arma::sort_index(evaluesO, "desc");
   evaluesO = evaluesO(sort_indices);
   eigenvectorsO = eigenvectorsO.cols(sort_indices);
-  evaluesO.transform([](double val){ return val <= 0 ? 0.0 : val;});
+  evaluesO.transform([](double val){ return val <= 0 ? 0.0 : val;});//quelli molto piccoli sono sbagliati ... ma molto vicini allo 0
   size_t npcO = arma::sum(evaluesO > 0);
   if(npcO == 0){stop("no eigenvalues greater than 0");}else{npcO--;};//vedi se togliere 1, ricontrolla anche se in eigen ha senso
   double sum_pos_O = arma::sum(evaluesO(arma::find(evaluesO > 0)));
@@ -542,7 +538,8 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       {npc_index_i = indices[0]; npcO = npc_index_i;}
     
   }//forse in realtà è giusto rifare questi calcoli da capo perchè sto usando Y_pred??
-  arma::mat efunctionsO_i = Winvsqrt * eigenvectorsO.cols(0, npcO);//dovrebbe esseere giusto aver sottratto 1 prima
+  //npcO giusto (uno in meno di R)
+  arma::mat efunctionsO_i = Winvsqrt * eigenvectorsO.cols(0, npcO);//giusto
   arma::vec evaluesO_i = evaluesO.subvec(0, npcO);//giusto
   arma::mat D_inv = arma::diagmat(1/evaluesO_i);
   arma::mat Z = efunctionsO_i;
@@ -586,8 +583,7 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
       y_cent_arma[u] = Y_cent[u];
     }
     NumericVector fragmO_presmooth;//rimane empty se non entra in KLAl4
-
-    if(method == "KLAl4")//else è KLAl5 e lo salta
+    if(method == "KLAl")//else è KLAl5 e lo salta
     {
       NumericVector y;
       NumericVector x = wrap(argvalsO_i); //argvalsO_i[obs_locO] = argvalsO_i per costruzione!

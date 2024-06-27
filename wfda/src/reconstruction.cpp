@@ -64,11 +64,11 @@ const NumericVector& ReconstructionBase::meanRows() {
         }
         m_mean[i] = sum / (nCols - naCount);
         /*m_mean[i] = naCount < nCols ? sum / (nCols - naCount) : NA_REAL; 
-        //in realtà non dovrebbe mai capitare di avere degli NA
-        //ci dovrebbe essere sempre almeno una curva completa*/
+         in realtà non dovrebbe mai capitare di avere degli NA
+         ci dovrebbe essere sempre almeno una curva completa*/
     }
 
-    return m_mean;//retunr a reference to the data member
+    return m_mean;
 }
 
 const NumericMatrix& ReconstructionBase::covMatrix(){
@@ -262,6 +262,7 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
   //bool makePD = false;
 
   std::pair<std::vector<double>,NumericMatrix> Y = irreg2mat(ydata, true, max_bins);//binning = true
+  //m_Y_preprocessed = irreg2mat(ydata, true, max_bins);
   m_Y_preprocessed = Y;
   //argvals è Y.first
   IntegerVector reconst_fcts;
@@ -352,7 +353,7 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
   }else{
     mu = NumericVector(d,0.0);
   }
-  m_mu = mu;
+  m_mu = mu;//giusto
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov
   std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
@@ -365,19 +366,21 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
   
   //fissa i nuovi data member
   
-  m_muO = std::get<0>(ret);
-  m_scoresO = std::get<1>(ret);
-  m_CE_scoresO = std::get<2>(ret);
-  m_efunctions = std::get<3>(ret);
-  m_efunctionsO = std::get<4>(ret);
-  m_efun_reconst = std::get<5>(ret);
-  m_evalues = std::get<6>(ret);
-  m_evaluesOO = std::get<7>(ret);
-  m_obs_argvalsO = std::get<8>(ret);
-  m_locO = std::get<9>(ret);
+  m_muO = std::get<0>(ret);//giusto
+  m_scoresO = std::get<1>(ret);//no?
+  //for(const auto& e:m_scoresO)
+    //Rcout<<e<<" ";
+  m_CE_scoresO = std::get<2>(ret);//giusto
+  m_efunctions = std::get<3>(ret);//giusto
+  m_efunctionsO = std::get<4>(ret);//giusto
+  m_efun_reconst = std::get<5>(ret);//giusto
+  m_evalues = std::get<6>(ret);//no?
+  //Rcout<<m_evalues;
+  m_evaluesOO = std::get<7>(ret);//giusto
+  m_obs_argvalsO = std::get<8>(ret);//giusto
+  m_locO = std::get<9>(ret);//controlla se ha senso tenerlo e farlo restituire, o se non ho già questa informazione da altre parti  
   m_sigma2 = std::get<10>(ret);//giusto
   m_cov_est = std::get<11>(ret);//giusto
-
 }
 
 
@@ -426,9 +429,9 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
   //myfpca setta dei data member. reonstructCurve() non può essere const
   myfpca(Y_list, U_list, false, true, maxBins, all);//all = false vuol dire che non deve ricostruire tutto
 
-  size_t length_reconst_fcts = m_obs_argvalsO.size();//per come è stata costruita in eigen è di dimensione pari a lunghezza reconst_fcts
+  size_t length_reconst_fcts = reconst_fcts.size();
   std::vector<double> K_vec;
-  K_vec.reserve(length_reconst_fcts);
+  K_vec.reserve(length_reconst_fcts);//mettere length_reconst_fcts come data member al momento della creazione dell'oggetto
   std::vector<arma::vec> Y_reconstr_list(length_reconst_fcts);
   std::vector<arma::vec> W_reconst_list(length_reconst_fcts);
   std::vector<arma::vec> U_reconst_list(length_reconst_fcts);
@@ -442,10 +445,10 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
       stop("The range of obs_argvalsO of the fragment must equal the range of argvalsO");
     }
     
-    if(K.isNull())//per ora ho dato il default a 0, ma poi mettere Nullable
+    if(K.isNull())
     {
-      //std::string method = "KLAl4";//pev = 0.99
-      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_locO[i], m_cov_est, m_sigma2, m_method, 0.99));
+      //std::string method = "KLAl";//pev = 0.99
+      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_locO[i], m_cov_est, m_sigma2, m_method, 0.99));//giusto
     }else{K_vec.push_back(as<int>(K));}
 
     NumericVector fragmO_presmooth = NumericVector();
@@ -453,18 +456,19 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
         NumericVector y = (m_Y_preprocessed.second)(reconst_fcts[i],_);
         LogicalVector no_na = !is_na(y);
         NumericVector y_c = y[no_na];
-        NumericVector obs_argvals = wrap(m_obs_argvalsO[i]); //wrap the arma::vec
+        NumericVector obs_argvals = wrap(obs); //wrap the arma::vec m_obs_argvalsO[i]
         NumericVector argvalsO_i_vector = wrap(argvalsO_i);
 
-        Function smooth_spline = stats["smooth.spline"];
+        Function smooth_spline = stats["smooth.spline"];//metterlo nella classe?
         List smooth_fit = smooth_spline(_["y"] = y_c, _["x"] = obs_argvals);
 
         Function predict = stats["predict"];
         List fragmO_presmooth_list = predict(smooth_fit, _["x"] = argvalsO_i_vector);
         fragmO_presmooth = fragmO_presmooth_list["y"];
-    }
+    }//giusto
 
     //fragmO_presmooth empty if method == "KLNoAl"
+    //errore deve essere in reconstKL_fun
     std::tuple<arma::vec, arma::vec> result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], 
                                                             m_efun_reconst[i], fragmO_presmooth, K_vec[i],
                                                             m_evaluesOO[i], m_observed_period[i], m_cov_est);

@@ -1,5 +1,61 @@
 #include <RcppArmadillo.h>
+
 using namespace Rcpp;
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+arma::mat getEigenValues(arma::mat M) {
+    arma::vec evalues;
+    arma::mat evectors;
+    arma::eig_sym(evalues, evectors,M);
+    return evectors;
+}
+// [[Rcpp::export]]
+List try_list(const List& r)
+{
+  List new_list = clone(r);
+  for(int i = 0 ; i < r.length(); i++)
+  {
+    int elem = new_list[i];
+    new_list[i] = elem + 1;
+  }
+  return r;
+}
+
+// [[Rcpp::export]]
+NumericMatrix test_fda(List& xxfdjk, List& betabasisj, List& betabasisk, NumericVector& range){
+  Environment fda = Environment::namespace_env("fda");
+  Function sum_fd = fda["sum.fd"];
+  Function inprod = fda["inprod"];
+  List wtfdjk = sum_fd(xxfdjk);
+  NumericMatrix Cmatjk = inprod(_["fdobj1"] = betabasisj, _["fdobj2"] = betabasisk, _["rng"] = range, _["wtfd"] = wtfdjk);
+  return Cmatjk;
+}
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+RObject sum_cpp(arma::vec vec1) {
+  Function sum = Environment::base_env()["sum"];
+  return sum(vec1);
+}
+/*// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+arma::uvec test_set(arma::vec vec1, arma::vec vec2)
+{
+  arma::uvec test;
+  for(const auto& t:vec2)
+  {
+      arma::uvec indices = arma::find(vec1 == t);
+      test.insert_rows(test.n_elem, indices);
+  }
+  return test;
+}
+// [[Rcpp::export]]
+arma::vec sample_cpp(const arma::vec& vec)
+{
+    //RNGkind(sample.kind = "Rounding")
+    arma::vec ret = RcppArmadillo::sample(vec, 3, false);
+    return ret;
+}*/
 /*// [[Rcpp::export]]*/
 arma::vec eigenvalues(arma::mat V) {
     // Compute eigenvalues of a symmetric matrix

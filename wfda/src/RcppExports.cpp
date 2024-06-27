@@ -11,6 +11,17 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// getEigenValues
+arma::mat getEigenValues(arma::mat M);
+RcppExport SEXP _wfda_getEigenValues(SEXP MSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type M(MSEXP);
+    rcpp_result_gen = Rcpp::wrap(getEigenValues(M));
+    return rcpp_result_gen;
+END_RCPP
+}
 // try_list
 List try_list(const List& r);
 RcppExport SEXP _wfda_try_list(SEXP rSEXP) {
@@ -51,6 +62,7 @@ END_RCPP
 RcppExport SEXP _rcpp_module_boot_reconstruction();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_wfda_getEigenValues", (DL_FUNC) &_wfda_getEigenValues, 1},
     {"_wfda_try_list", (DL_FUNC) &_wfda_try_list, 1},
     {"_wfda_test_fda", (DL_FUNC) &_wfda_test_fda, 4},
     {"_wfda_sum_cpp", (DL_FUNC) &_wfda_sum_cpp, 1},
