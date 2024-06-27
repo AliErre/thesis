@@ -3,7 +3,7 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
-std::tuple<arma::vec, arma::vec> 
+std::pair<arma::vec, arma::vec> 
 reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const arma::uvec& locO, 
               const arma::vec& scoresO, const NumericMatrix& efunc_r, const NumericVector& fragmO, int k,
               const arma::vec& evaluesO = arma::vec(), const std::vector<double>& argvalsO = std::vector<double>(), const arma::mat& cov = arma::mat())
@@ -47,7 +47,7 @@ reconstKL_fun(const NumericVector& mu, const std::vector<double>& argvals, const
     weights_reconst.fill(1);
     weights_reconst.elem(locM) -= v_hat_reconstr / arma::sqrt(diag_cov.elem(locM));
   }
-  return std::make_tuple(reconstr, weights_reconst);//metti un pair
+  return std::make_pair(reconstr, weights_reconst);
 }
 
 
@@ -77,7 +77,7 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   std::vector<std::tuple<int, double, double>> y_data_complete(find_complete_tuple(y_data));
   std::set<double> bins; 
 
-  std::vector<int> ids;//controllare se qua gli elementi partono da 0 o da 1. Per ora do per scontato partano da 0
+  std::vector<int> ids;
   ids.reserve(y_data_complete.size());
   for(const auto& t: y_data_complete)
   {
@@ -85,8 +85,8 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
     bins.insert(std::get<1>(t));
   }//bins è per forza uguale a t_points
 
-  //ids sarà già ordinato, non c'è bisogno di chiamare sort
-  std::vector<int> ids_copy = ids;//necessità copia perché std::unique modifica il vettore
+  //ids already ordered, no sorting beforehand needed
+  std::vector<int> ids_copy = ids;//copy since std::unique modifies vector
   int nobs = std::distance(ids_copy.begin(),std::unique(ids_copy.begin(),ids_copy.end()));//corretto
   bool condition = binning && bins.size() > static_cast<size_t>(max_bins);//false
   std::vector<double> binvalues = make_bins(bins, max_bins, condition);//bins sarà modificato, chiamo make_bins con la reference
@@ -99,7 +99,7 @@ std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tu
   {
     index_vector.push_back(std::get<1>(t));
   }
-  index_vector.shrink_to_fit(); //non dovrebbe servire perchè la dimensione è quella precisa
+  index_vector.shrink_to_fit();
 
   std::vector<std::pair<double, double>> classes = cut(index_vector, bins);//this is newindex in R
   //associate each class to a column index
@@ -292,16 +292,16 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
 
   arma::vec evalues;
   arma::mat eigenvectors;
-  arma::eig_sym(evalues, eigenvectors, V);//restituisce da autovalore più basso a più alto
+  arma::eig_sym(evalues, eigenvectors, V);//ascending orderered eigenvalues
   arma::uvec sort_index = arma::sort_index(evalues, "desc");
-  //ordine discendente
+  //descending order, coherence with R
   evalues = evalues(sort_index);
   eigenvectors = eigenvectors.cols(sort_index);
-  evalues.transform([](double val) { return val <= 0 ? 0.0 : val; });//ora tutti gli autovalori sono >= 0
-  int npc = arma::sum(evalues > 0) - 1;//conta valori positivi -> poi lo devo usare come indice di posizione, quindi tolgo 1
+  evalues.transform([](double val) { return val <= 0 ? 0.0 : val; });//eigenvalues >= 0
+  int npc = arma::sum(evalues > 0) - 1;//position index: subtract -1
   double sum_pos = arma::sum(evalues(arma::find(evalues > 0)));
 
-  if (!NumericVector::is_na(pev)) { //riguardare default di pev, in R è NULL, qua sto facendo come se fosse NA_REAL
+  if (!NumericVector::is_na(pev)) { 
     arma::uword npc_index;
 
     if (sum_pos > 0) {
@@ -309,25 +309,25 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
       double threshold = pev * sum_pos;
       arma::uvec indices = arma::find(cumsum_pos >= threshold);
 
-      if(!indices.is_empty())//in realtà non dovrebbe essere mai empty
+      if(!indices.is_empty())
         {npc_index = indices[0]; npc = static_cast<int>(npc_index);}
     }
   }
 
   //only select eigenvectors and corresponding eigenvalues up to npc-th
-  arma::mat selected_eigenvectors = eigenvectors.cols(0, npc); //i primi due hanno segni opposti
+  arma::mat selected_eigenvectors = eigenvectors.cols(0, npc);
   arma::mat efunctions = Winvsqrt * selected_eigenvectors;
   arma::vec selected_evalues = evalues.subvec(0, npc);
 
   
   //estimated covariance function
-  arma::mat cov_est = efunctions * arma::diagmat(selected_evalues) * efunctions.t();//dovrebbe venire giusta nonostante differenze di segno in efunctions, visto che moltiplico due volte
+  arma::mat cov_est = efunctions * arma::diagmat(selected_evalues) * efunctions.t();
   //numerical integration for estimation of sigma2
   double T_len = argvals[argvals.size() - 1] - argvals[0];//interval length
 
-  double lower_bound = argvals[0] + 0.25 * T_len;//can use it only on an ordered container, so argvals must be order (which it is)
-  auto it = std::lower_bound(argvals.begin(), argvals.end(), lower_bound);
-  int T1_min = std::distance(argvals.begin(), it); //in R which returns an index
+  double lower_bound = argvals[0] + 0.25 * T_len;
+  auto it = std::lower_bound(argvals.begin(), argvals.end(), lower_bound);//use it on ordered container
+  int T1_min = std::distance(argvals.begin(), it);
 
   double upper_bound = argvals[argvals.size() - 1] - 0.25 * T_len;
   auto it_max = std::upper_bound(argvals.begin(), argvals.end(), upper_bound);
@@ -336,7 +336,7 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
     --it_max;
   }
 
-  int T1_max = std::distance(argvals.begin(), it_max);// = 0 se sono tutti maggiori di upper_bound. Ma non dovrebbe succedee
+  int T1_max = std::distance(argvals.begin(), it_max);// = 0 if all > upper_bound
   arma::vec diag_diff = as<arma::vec>(diagG0) - arma::diagvec(cov_est);
   arma::vec sub_diag = diag_diff.subvec(T1_min, T1_max);
   std::vector<double> argvals_subset(argvals.begin() + T1_min, argvals.begin() + T1_max + 1);
@@ -345,24 +345,25 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
 
   //sigma
   std::vector<double> sub_diag_vec(sub_diag.begin(), sub_diag.end());
-  double sigma2 = std::max(weighted_mean(sub_diag_vec, w2), 0.0);//lei aveva messo na.rm ma secondo me non dovrebbero esserci NA
+  double sigma2 = std::max(weighted_mean(sub_diag_vec, w2), 0.0);
   //computations for observed fragments
-  std::vector<arma::vec> muO(reconst_fcts.size()), obs_argvalsO(reconst_fcts.size()), evaluesOO(reconst_fcts.size());
-  std::vector<double> scoresO(reconst_fcts.size());
-  std::vector<arma::mat> efunctionsO(reconst_fcts.size());
-  std::vector<NumericMatrix> efun_reconst(reconst_fcts.size());
-  std::vector<arma::uvec> locOO(reconst_fcts.size());
-  List CE_scoresO(reconst_fcts.size());
+  size_t length_reconst_fcts = reconst_fcts.size();
+  std::vector<arma::vec> muO(length_reconst_fcts), obs_argvalsO(length_reconst_fcts), evaluesOO(length_reconst_fcts);
+  std::vector<double> scoresO(length_reconst_fcts);
+  std::vector<arma::mat> efunctionsO(length_reconst_fcts);
+  std::vector<NumericMatrix> efun_reconst(length_reconst_fcts);
+  std::vector<arma::uvec> locOO(length_reconst_fcts);
+  List CE_scoresO(length_reconst_fcts);
   
   
-  for (int i = 0; i < reconst_fcts.size(); ++i) {//argvalsO should be of size reconst_fcts (observed_period in myfpca)
+  for (int i = 0; i < length_reconst_fcts; ++i) {
     // Numerical integration for calculation of eigenvalues
     std::vector<double> w = quadWeights(argvalsO[i]);
     arma::vec w_arma = arma::conv_to<arma::vec>::from(w);
     arma::mat Wsqrt = arma::diagmat(arma::sqrt(w_arma));
     arma::mat Winvsqrt = arma::diagmat(1 / arma::sqrt(w_arma));
 
-    arma::uvec locO(argvalsO[i].size());//0-indexed. su R è 1-indexed
+    arma::uvec locO(argvalsO[i].size());//0-indexed
     for(arma::uword j = 0; j < locO.size(); ++j)
     {
       locO[j] = j; //match() su R
@@ -416,14 +417,14 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
       if (sigma2 == 0) {
         sigma2 = 1e-6;
       }
-      if (obs_locO.size() < npcO + 1) {//+1 perchè era un indice e ora lo uso come dimensione
+      if (obs_locO.size() < npcO + 1) {//+1 cause it was an index and now a size
         npcO = obs_locO.size();
-        size = true;//se è qua è una size e non un index
+        size = true;//if here it is a size not an index
       }
-      arma::mat Zcur = Z.submat(arma::span(obs_locO[0],obs_locO[obs_locO.size()-1]),arma::span(0, npcO - 1*CEScores*size));//controlla
+      arma::mat Zcur = Z.submat(arma::span(obs_locO[0],obs_locO[obs_locO.size()-1]),arma::span(0, npcO - 1*CEScores*size));
       arma::mat ZtZ_sD_inv = arma::inv(Zcur.t() * Zcur + sigma2 * D_inv.submat(arma::span(0, npcO - 1*CEScores*size),arma::span(0, npcO - 1*CEScores*size)));
-      arma::vec CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * Y_cent_arma(no_na);//arma::vec sono vettori colonna
-      CE_scoresO[i] = CE_scoresO_i; //corretto a meno di un segno
+      arma::vec CE_scoresO_i = ZtZ_sD_inv * Zcur.t() * Y_cent_arma(no_na);//arma::vec column vectors
+      CE_scoresO[i] = CE_scoresO_i;
     } else {
       CE_scoresO[i] = NA_REAL;
     }
@@ -432,7 +433,7 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
     for(arma::uword j = 0; j < efunctionsO_i_sub.n_cols;++j)
     {
       arma::vec column = efunctionsO_i_sub.col(j);
-      double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);//check
+      double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);
       scoresO[i] = integral;
     }
 
@@ -460,7 +461,7 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
     evaluesOO[i] = evaluesO_i;
     efunctionsO[i] = efunctionsO_i;
   }
-  //vedi se settare data member poi da myfpca a seconda dell uso che ne deve fare KLAl
+  
   return std::make_tuple(muO, scoresO, CE_scoresO, efunctions, efunctionsO,
                         efun_reconst, evalues, evaluesOO, obs_argvalsO, locOO,sigma2, cov_est);
                       

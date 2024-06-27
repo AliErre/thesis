@@ -36,11 +36,9 @@ std::vector<int> ReconstructionBase::find_obs_inc(const NumericMatrix& Y) const{
 
 
 IntegerVector ReconstructionBase::reconst_fcts() const{
-  //when return to R, indices must start from 1
-  std::vector<int> shifted_reconst_fcts(m_reconst_fcts.size());
-  std::transform(m_reconst_fcts.begin(), m_reconst_fcts.end(), shifted_reconst_fcts.begin(),
-                 [](int value){return value + 1; }); //lambda function
-  return wrap(shifted_reconst_fcts); //wrap does not perform additional memory allocation, directly references
+  //getter to be called from R: indices must start from 1
+  IntegerVector rf(m_reconst_fcts.begin(), m_reconst_fcts.end());
+  return rf + 1;
 }
 
 
@@ -48,13 +46,12 @@ const NumericVector& ReconstructionBase::meanRows() {
 
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
-  m_mean = NumericVector(nRows);//vedi se lasciarlo o no
+  m_mean = NumericVector(nRows);
     for (int i = 0; i < nRows; ++i) {
         double sum = 0;
         int naCount = 0;
 
         NumericVector row = m_Y(i, _); //::ConstRow gives constant reference to the current row
-        // Iterate over the elements of the row
         for (auto it = row.begin(); it != row.end(); ++it) {
             if (NumericVector::is_na(*it)) {
                 naCount++;
@@ -63,19 +60,16 @@ const NumericVector& ReconstructionBase::meanRows() {
             }
         }
         m_mean[i] = sum / (nCols - naCount);
-        /*m_mean[i] = naCount < nCols ? sum / (nCols - naCount) : NA_REAL; 
-         in realtà non dovrebbe mai capitare di avere degli NA
-         ci dovrebbe essere sempre almeno una curva completa*/
     }
 
     return m_mean;
 }
 
 const NumericMatrix& ReconstructionBase::covMatrix(){
-  //if(m_mean.length() == 0){meanRows();} not necessary
+
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
-  NumericMatrix X_cent_mat(nRows, nCols);//fixed dimensions 
+  NumericMatrix X_cent_mat(nRows, nCols); 
 
     for (int i = 0; i < nRows; ++i) {
         for (int j = 0; j < nCols; ++j) {
@@ -107,32 +101,35 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
 
 
 List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& t_points = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
-//dovrei avere già mean_vec e cov_mat nella classe appena chiamo il costruttore
+
   double alpha;
   if(alpha_nullable.isNotNull()){alpha = as<double>(alpha_nullable);} 
-  int n = m_Y.ncol();
+  size_t n = m_Y.ncol();
+  size_t r = m_Y.nrow();
   IntegerVector reconst_fcts;
-  //if all = TRUE -> ricostruiscile tutte
-  if(all){
-    reconst_fcts = seq_len(n); //Rcpp sugar, vedi se l'alternativa con for è più efficiente
+  
+  if(all){//reconstruct all
+    reconst_fcts = seq_len(n) - 1; //Rcpp sugar
   }
-  else{
-    reconst_fcts = (*this).reconst_fcts() - 1;//getter, trasformava gli indici avanti di uno perchè li restituiva ad R. Quindi ora togli 1
+  else{//only reconstruct the partially observed
+    reconst_fcts = (*this).reconst_fcts() - 1;//getter
   }
-  int r = m_Y.nrow();
-  NumericMatrix X_reconst_mat(r,reconst_fcts.size());
+
+  m_length_reconst_fcts = reconst_fcts.size();
+
+  NumericMatrix X_reconst_mat(r,m_length_reconst_fcts);
   int column = 0;
   for(int& index: reconst_fcts){
     X_reconst_mat(_,column++) = m_Y(_,index);
-
   }
-  NumericMatrix W_reconst_mat(r,reconst_fcts.length());//initialized filled with 0s
-  std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//posso fare così grazie a come sono salvate le NumericMatrix in memoria
 
-  std::vector<int> nonNA_fcts; //mask in R
-  nonNA_fcts.reserve(n);//metterlo come data member?
-  //apply(X_mat,2,function(x)!any(is.na(x)))
-  for(int i = 0; i < n; i++){
+  NumericMatrix W_reconst_mat(r,reconst_fcts.length());//initialized with 0s
+  std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//thanks to how NumericMatrix stored in memory
+
+  std::vector<size_t> nonNA_fcts; //mask in R
+  nonNA_fcts.reserve(n);
+
+  for(size_t i = 0; i < n; i++){
     //trasforma tutti i loop con size_t
     NumericVector col = m_Y(_, i);
     if(is_false(any(is_na(col))))
@@ -141,29 +138,29 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
 
   NumericMatrix X_Compl_mat(r,nonNA_fcts.size());
   column = 0;
-  for(auto& index: nonNA_fcts){
+  for(const auto& index: nonNA_fcts){
     X_Compl_mat(_,column++) = m_Y(_,index);
   }
 
-  NumericVector alpha_vec(reconst_fcts.size());
-  NumericVector df_vec(reconst_fcts.size());
+  NumericVector alpha_vec(m_length_reconst_fcts);//chose Rcpp vectors cause they have to be returned. No overhead
+  NumericVector df_vec(m_length_reconst_fcts);
   
   column = 0;
   gcv GCV(X_Compl_mat, m_mean, m_cov);//vedere se poi chiamare destructor. Only created once
-  
-  for(auto& index:reconst_fcts){
+  constexpr auto tol = 0.0001220703;
+  for(const auto& index:reconst_fcts){
 
     LogicalVector M_bool = is_na(m_Y(_,index));
     LogicalVector O_bool = !M_bool;
     GCV.set_bool(M_bool);
     
-    if(alpha_nullable.isNull())//R_NilValue = NULL in R, in attesa di capire come gestire NULL, metto 0.0 di default
+    if(alpha_nullable.isNull())
     {
       double max_bound = 0.0;
-      for(int i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
+      for(size_t i = 0; i < r;++i){//r should be the nrow, ncol of m_cov -> diag is of length r
         max_bound += m_cov(i,i);
       }
-      alpha_vec[column] = optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound * n, false, 0.0001220703); //false -> minimization
+      alpha_vec[column] = optimize(&GCV, std::numeric_limits<double>::epsilon(), max_bound * n, false, tol); //false -> minimization
     }else{
       alpha_vec[column] = alpha;
     }
@@ -172,7 +169,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
   //reconstKraus["X_cent_reconst_vec"] is an arma::vec
     NumericVector X_reconst = std::get<0>(resultKraus);
     X_reconst_mat(_,column) = X_reconst + m_mean;
-    df_vec[column] = std::get<1>(resultKraus);//check
+    df_vec[column] = std::get<1>(resultKraus);
     arma::uvec M_bool_arma = std::get<4>(resultKraus);
     arma::vec hi = std::get<3>(resultKraus);
     for(const auto& m:M_bool_arma)
@@ -199,14 +196,15 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
   }else{
     stop("for extrapolation method you must provide a vector");
   }
+
   arma::mat m_Y_arma = as<arma::mat>(m_Y);
   int n = m_Y.ncol();
-  arma::vec mean_slope(r-1); //slope media per ogni riga
+  arma::vec mean_slope(r-1); //mean row slope
   arma::uvec no_rec_fcts(n-m_reconst_fcts.size());
   //build vector of indeces not in m_reconst_fcts
   int row = 0;
-  for( int i = 0; i < m_Y.ncol();i++){
-    bool found = std::binary_search(m_reconst_fcts.begin(),m_reconst_fcts.end(),i);//works cause reconst_fcts is an ordered vector
+  for( int i = 0; i < m_Y.ncol(); i++){
+    bool found = std::binary_search(m_reconst_fcts.begin(),m_reconst_fcts.end(),i);//reconst_fcts is ordered
     if(!found){no_rec_fcts(row++) = i;}
   }
 
@@ -218,6 +216,7 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
     arma::vec num = arma::conv_to<arma::vec>::from(last_row - m_Y_no_rec.row(j));
     mean_slope(j) = arma::mean(num)/(last_period - periods[j]);
   }
+
   arma::mat Y_reconstruct = m_Y_arma;
   for(const auto& index:m_reconst_fcts)
   {
@@ -230,6 +229,7 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
     const double last_slope = slopes.back();
     const arma::vec& observed_col_Y = arma::conv_to<arma::vec>::from(col_Y_arma(id_no_na));
     const double last_observed_value = observed_col_Y.back();
+
     //reconstruct with equation of a straight line
     for(const auto& na:id_na)
     {
@@ -256,32 +256,31 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
     ydata.push_back(std::make_tuple(id_vec[i],unlist(Lu)[i],unlist(Ly)[i])); // .id,(time) .index, .value
   }
 
-  constexpr int nbasis = 10;//vedi se ha senso mettere qua constexpr
+  constexpr int nbasis = 10;
   int max_bins = (max_bins_nullable.isNull())? 1000 : as<int>(max_bins_nullable); 
-  //bool useSymm = false;//se sono sempre false finsico sempre negli stessi branch
+  //bool useSymm = false;
   //bool makePD = false;
 
-  std::pair<std::vector<double>,NumericMatrix> Y = irreg2mat(ydata, true, max_bins);//binning = true
-  //m_Y_preprocessed = irreg2mat(ydata, true, max_bins);
-  m_Y_preprocessed = Y;
-  //argvals è Y.first
+  m_Y_preprocessed = irreg2mat(ydata, true, max_bins);//binning = true
+  //argvals = m_Y_preprocessed.first
+
   IntegerVector reconst_fcts;
   if(all)//reconstruct all curves
   {
-    reconst_fcts = seq_len(m_Y.ncol())-1;//lo devo correggere anche in Kraus e mettere -1
+    reconst_fcts = seq_len(m_Y.ncol())-1;
   }else{
-    reconst_fcts = wrap(m_reconst_fcts);
+    reconst_fcts = (*this).reconst_fcts() - 1;
   }
 
-  int d = Y.second.ncol();          //D 15
-  int i = Y.second.nrow();          //I 5
-  int i_pred = reconst_fcts.size(); //I.PRED
+  int d = m_Y_preprocessed.second.ncol();          //D 15
+  int i = m_Y_preprocessed.second.nrow();          //I 5
+  int i_pred = reconst_fcts.size();                //I.PRED
 
-  NumericMatrix Y_pred(i_pred, d);  //Y.second è la matrice
+  NumericMatrix Y_pred(i_pred, d);  //m_Y_preprocessed.second è la matrice
   int row = 0;
   for(const auto& index: reconst_fcts)
   {
-    Y_pred(row++,_) = Y.second(index,_);
+    Y_pred(row++,_) = m_Y_preprocessed.second(index,_);
   }
 
   std::vector<std::vector<double>> observed_period; //argvalsO
@@ -294,20 +293,18 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
     for(int j = 0; j < d; ++j)
     {
       if(!NumericVector::is_na(Y_pred(ii,j)))
-        obs.push_back(Y.first[j]);
+        obs.push_back(m_Y_preprocessed.first[j]);
     }
     obs.shrink_to_fit();
     observed_period.push_back(obs);
   }
 
   m_observed_period = observed_period;
-
-  //argvals = Y.first
       
   std::vector<double> d_vec;
   d_vec.reserve(i * d); 
-  for (const double& val : Y.first) {
-    for (int j = 0; j < i; ++j) {//Y.first = argvals = t.points .....  
+  for (const double& val : m_Y_preprocessed.first) {
+    for (int j = 0; j < i; ++j) {//m_Y_preprocessed.first = argvals = t.points  
         d_vec.push_back(val);        
     }
   }
@@ -315,25 +312,25 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
 
   std::vector<int> id;
   id.reserve(i * d); 
-  for (int j = 0; j < i; ++j) {//controlla che non sia da j = 1 a j = i, ma solo perchè devo capire se servono gli indici di R o C++, penso C++
+  for (int j = 0; j < i; ++j) {
       for (int dd = 0; dd < d; ++dd) {
           id.push_back(j);
       }
   }
   id.shrink_to_fit();
 
-  NumericMatrix Y_tilde(clone(Y.second)); //cercare se da altre parti avrei dovuto usare clone per la shallow copy
-  NumericVector yfirst = wrap(Y.first);//t_points
+  NumericMatrix Y_tilde(clone(m_Y_preprocessed.second)); //cercare se da altre parti avrei dovuto usare clone per la shallow copy
+  NumericVector yfirst = wrap(m_Y_preprocessed.first);   //t_points
   NumericVector mu;
   if(center)
   {
-    NumericMatrix Y_mat = Y.second;
+    NumericMatrix Y_mat = m_Y_preprocessed.second;
     NumericVector vec(Y_mat.begin(), Y_mat.end());
-    Environment mgcv = Environment::namespace_env("mgcv");    
-    Function gam = mgcv["gam"];
-    Function predict_gam = mgcv["predict.gam"];
+    //Environment mgcv = Environment::namespace_env("mgcv");    
+    //Function gam = mgcv["gam"];
+    //Function predict_gam = mgcv["predict.gam"];
 
-    NumericVector dvec = wrap(d_vec); //forse posso passare direttamente d_vec e chiamato in automatico wrap
+    NumericVector dvec(d_vec.begin(), d_vec.end());
 
     DataFrame data = DataFrame::create(_["Y"] = vec, _["d.vec"] = dvec);
     std::string formula_str = "Y ~ s(d.vec, k = " + std::to_string(nbasis) + ")";
@@ -356,26 +353,22 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
   m_mu = mu;//giusto
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov
-  std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
+  std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(m_Y_preprocessed.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
   NumericMatrix npc0 = cov_smooth.first; //giusto
   NumericVector diagG0 = cov_smooth.second; //giusto
 
   //numerical integration for calculation of eigenvalues (see Ramsay & Silverman, Ch. 8)
   std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::vector<arma::mat>, std::vector<NumericMatrix>, 
-           arma::vec,std::vector<arma::vec>, std::vector<arma::vec>, std::vector<arma::uvec>, double, arma::mat>  ret = eigen(Y.first, observed_period, npc0, 0.99, Y_pred, mu, diagG0, true, reconst_fcts);
+           arma::vec,std::vector<arma::vec>, std::vector<arma::vec>, std::vector<arma::uvec>, double, arma::mat>  ret = eigen(m_Y_preprocessed.first, observed_period, npc0, pev, Y_pred, mu, diagG0, true, reconst_fcts);
   
   //fissa i nuovi data member
-  
   m_muO = std::get<0>(ret);//giusto
   m_scoresO = std::get<1>(ret);//no?
-  //for(const auto& e:m_scoresO)
-    //Rcout<<e<<" ";
   m_CE_scoresO = std::get<2>(ret);//giusto
   m_efunctions = std::get<3>(ret);//giusto
   m_efunctionsO = std::get<4>(ret);//giusto
   m_efun_reconst = std::get<5>(ret);//giusto
   m_evalues = std::get<6>(ret);//no?
-  //Rcout<<m_evalues;
   m_evaluesOO = std::get<7>(ret);//giusto
   m_obs_argvalsO = std::get<8>(ret);//giusto
   m_locO = std::get<9>(ret);//controlla se ha senso tenerlo e farlo restituire, o se non ho già questa informazione da altre parti  
@@ -397,7 +390,13 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
   std::vector<std::vector<double>> Y_list(n);
   std::vector<std::vector<double>> U_list(n);
   NumericVector reconst_fcts;
-  if(all){reconst_fcts = seq_len(n) - 1;}else{reconst_fcts = wrap(m_reconst_fcts);}
+  if(all)
+  {
+    reconst_fcts = seq_len(n) - 1;
+  }else{
+    reconst_fcts = (*this).reconst_fcts() - 1;
+  }
+
   for(int i = 0; i < n; i++)
   {
     std::vector<double> keep;
@@ -429,17 +428,16 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
   //myfpca setta dei data member. reonstructCurve() non può essere const
   myfpca(Y_list, U_list, false, true, maxBins, all);//all = false vuol dire che non deve ricostruire tutto
 
-  size_t length_reconst_fcts = reconst_fcts.size();
+  m_length_reconst_fcts = reconst_fcts.size();
   std::vector<double> K_vec;
-  K_vec.reserve(length_reconst_fcts);//mettere length_reconst_fcts come data member al momento della creazione dell'oggetto
-  std::vector<arma::vec> Y_reconstr_list(length_reconst_fcts);
-  std::vector<arma::vec> W_reconst_list(length_reconst_fcts);
-  std::vector<arma::vec> U_reconst_list(length_reconst_fcts);
-  Environment stats = Environment::namespace_env("stats");
-  NumericVector x = wrap(m_Y_preprocessed.first);
-  for(size_t i = 0; i < length_reconst_fcts; ++i){
-    arma::vec obs = m_obs_argvalsO[i];
-    std::vector<double> argvalsO_i = m_observed_period[i];//argvalsO[i] in R
+  K_vec.reserve(m_length_reconst_fcts);
+  std::vector<arma::vec> Y_reconstr_list(m_length_reconst_fcts);
+  std::vector<arma::vec> W_reconst_list(m_length_reconst_fcts);
+  std::vector<arma::vec> U_reconst_list(m_length_reconst_fcts);
+  NumericVector x((m_Y_preprocessed.first).begin(), (m_Y_preprocessed.first).end());
+  for(size_t i = 0; i < m_length_reconst_fcts; ++i){
+    const arma::vec& obs = m_obs_argvalsO[i];
+    const std::vector<double>& argvalsO_i = m_observed_period[i];//argvalsO[i] in R
     if(!(obs[0] == argvalsO_i[0] && obs[obs.size()-1] == argvalsO_i[argvalsO_i.size()-1]))
     {
       stop("The range of obs_argvalsO of the fragment must equal the range of argvalsO");
@@ -447,8 +445,7 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     
     if(K.isNull())
     {
-      //std::string method = "KLAl";//pev = 0.99
-      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_locO[i], m_cov_est, m_sigma2, m_method, 0.99));//giusto
+      K_vec.push_back(gcvKneipLiebl(m_mu, m_Y_preprocessed, argvalsO_i, m_locO[i], m_cov_est, m_sigma2, m_method, pev));//giusto
     }else{K_vec.push_back(as<int>(K));}
 
     NumericVector fragmO_presmooth = NumericVector();
@@ -456,30 +453,25 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
         NumericVector y = (m_Y_preprocessed.second)(reconst_fcts[i],_);
         LogicalVector no_na = !is_na(y);
         NumericVector y_c = y[no_na];
-        NumericVector obs_argvals = wrap(obs); //wrap the arma::vec m_obs_argvalsO[i]
-        NumericVector argvalsO_i_vector = wrap(argvalsO_i);
+        NumericVector obs_argvals(obs.begin(), obs.end());
+        NumericVector argvalsO_i_vector(argvalsO_i.begin(), argvalsO_i.end());
 
-        Function smooth_spline = stats["smooth.spline"];//metterlo nella classe?
         List smooth_fit = smooth_spline(_["y"] = y_c, _["x"] = obs_argvals);
-
-        Function predict = stats["predict"];
         List fragmO_presmooth_list = predict(smooth_fit, _["x"] = argvalsO_i_vector);
         fragmO_presmooth = fragmO_presmooth_list["y"];
     }//giusto
 
     //fragmO_presmooth empty if method == "KLNoAl"
-    //errore deve essere in reconstKL_fun
-    std::tuple<arma::vec, arma::vec> result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], 
+    std::pair<arma::vec, arma::vec> result = reconstKL_fun(m_mu, m_Y_preprocessed.first, m_locO[i], m_CE_scoresO[i], 
                                                             m_efun_reconst[i], fragmO_presmooth, K_vec[i],
                                                             m_evaluesOO[i], m_observed_period[i], m_cov_est);
-    Y_reconstr_list[i] = std::get<0>(result);
-    W_reconst_list[i] =std::get<1>(result);
+    Y_reconstr_list[i] = result.first;
+    W_reconst_list[i] = result.second;
     U_reconst_list[i] = x;
   }
   if(nRegGrid_nullable.isNotNull())
   {
     int nRegGrid = as<int>(nRegGrid_nullable);
-    Function spline = stats["spline"];
     double start = m_Y_preprocessed.first[0];
     double end = m_Y_preprocessed.first[m_Y_preprocessed.first.size()-1];
     double step = (end - start)/(nRegGrid - 1);
@@ -489,15 +481,15 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     }
     sequence = sequence * step + start;
   
-    for(size_t i = 0; i < length_reconst_fcts; ++i)
+    for(size_t i = 0; i < m_length_reconst_fcts; ++i)
     {
-      NumericVector y = wrap(Y_reconstr_list[i]);
+      NumericVector y((Y_reconstr_list[i]).begin(), (Y_reconstr_list[i]).end());
       List reconstr_on_grid = spline(_["y"] = y, _["x"] = x, _["xout"] = sequence);
       Y_reconstr_list[i] = as<arma::vec>(reconstr_on_grid["y"]);
       U_reconst_list[i] = as<arma::vec>(reconstr_on_grid["x"]);
     }
   }
-  NumericVector K_vec_ = wrap(K_vec);
+  NumericVector K_vec_(K_vec.begin(),K_vec.end());
   return List::create(_["Y_reconst_list"] = Y_reconstr_list, _["U_reconst_list"] = U_reconst_list, 
                       _["W_reconst_list"] = W_reconst_list, _["K"] = K_vec_);
 }
