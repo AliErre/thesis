@@ -2,16 +2,17 @@
 
 ## Description
 
-The `wfda` package provides tools for the reconstruction of partially observed curves. The reconstruction methods are implemented in C++ for efficiency, with wrapper functions provided for easy usage in R.
+The `wfda` package provides tools for the reconstruction of partially observed curves. The reconstruction methods are implemented in C++ for efficiency, with a wrapper function provided for easy usage in R.
 
-The package includes a `ReconstructionBase` class, from which three other classes are derived: `Kraus`, `KLAl`, `KLNoAl`, and `Extrapolation`. The user selects the derived class by providing a string identifier. The possible values for this identifier are:
+The package includes a `ReconstructionBase` class, from which three other classes are derived: `Kraus`, `KLAl/KLNoAl`, and `Extrapolation`. Each class specializes a `reconstructCurve` method. The user selects the derived class by providing a string identifier to a factory function, together with a matrix containing the observed curves. The possible values for the string identifier are:
 
 - "Kraus": if `alpha` is `NULL` then it is set through gcv using the complete curves observations.
 - "KLAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
 - "KLNoAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
 - "Extrapolation"
 
-The vector t_points must be provided to every method except "Kraus".
+The vector t_points must be provided non `NULL` to every method except "Kraus" which does not require it.
+Since variadic templating is not possible within `Rcpp` the `reconstructCurve` method has the same number of arguments for every method; moreover the only way to have default values for arguments is to create an R wrapper function. The latter is located in the R directory and wraps `reconstructCurve` so that the calls look more intuitive and every method call only needs to make explicit only the arguments it requires.
 
 
 
@@ -31,7 +32,7 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
 devtools::install_github("AliErre/thesis@alice/wfda")
 ```
 
-### In case you've been given access as a contributor: set up Rcpp
+### In case you have access to the package files: set up Rcpp
 Since the `wfda` package uses Rcpp extensively, you need to ensure you have Rcpp installed and a compatible compiler set up. Here's how to prepare:
 
 - **Install Rtools**:
@@ -46,7 +47,7 @@ Since the `wfda` package uses Rcpp extensively, you need to ensure you have Rcpp
 
 ### Building and Installing the Package
 
-3. Once you've cloned the repository and set up Rcpp, navigate to the `wfda` directory in your terminal.
+3. Once you've cloned the repository and set up Rcpp, open an Rstudio session and navigate to the `wfda` directory.
 
 After you clone the repository and have a compiler (which Rtools provides), you can do the following:
 ```R
@@ -72,7 +73,7 @@ load("t_points.Rdata")
 reconstruction <- Module("reconstruction", PACKAGE = "wfda")
 ReconstructionBase <- reconstruction$ReconstructionBase
 
-# instantiate objects with string identifier
+# instantiate objects with new() and string identifier
 klal <- new(ReconstructionBase, "KLAl", matrix_data)
 klnoal <- new(ReconstructionBase, "KLNoAl", matrix_data)
 kraus <- new(ReconstructionBase, "Kraus", matrix_data)
@@ -84,6 +85,22 @@ klnoal <- klnoal$reconstruct(NULL, FALSE, t.points, NULL, NULL, NULL)
 kraus <- kraus$reconstruct(NULL, FALSE, NULL, NULL, NULL, NULL)
 extrapolationo <- extrapolationo$reconstruct(NULL, FALSE, t.points, NULL, NULL, NULL)
 
+#access results
+reconst_kraus <- kraus$Y_reconst
+kraus$alpha
+weights_kraus <- kraus$W_reconst
+
+reconstruct_klal <- klal$Y_reconst_list
+weights_klal <- klal$W_reconst_list
+
+reconstruct_klnoal <- klnoal$Y_reconst_list
+weights_klnoal <- klnoal$W_reconst_list
+
+reconst_e <- extrapolationo$Y_reconst
+
+
 # reconstruct_wrapper example. Missing arguments default to NULL.
+kr <- reconstruct_wrapper("Kraus", curves)
 kl <- reconstruct_wrapper("KLAl", Y = curves, t.points = t.points)
+ex <- reconstruct_wrapper("Extrapolation", Y = curves, t.points = t.points)
 ```
