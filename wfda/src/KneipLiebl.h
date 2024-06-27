@@ -4,8 +4,7 @@
 #include <vector>
 using namespace Rcpp;
 //inner reconstruction function called in the gcv, with gcv parameter k
-//if method is KLAl5, fragmO.size() = 0
-std::tuple<arma::vec, arma::vec> 
+std::pair<arma::vec, arma::vec> 
 reconstKL_fun(const NumericVector&, const std::vector<double>&, const arma::uvec&, 
               const arma::vec&, const NumericMatrix&, const NumericVector&, int,
               const arma::vec&, const std::vector<double>&, const arma::mat&);

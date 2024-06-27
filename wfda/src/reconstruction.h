@@ -10,7 +10,8 @@ class ReconstructionBase {
     //nota: references point the memory area of the R object!!
         ReconstructionBase(const std::string& method, const NumericMatrix& Y) 
                           : m_method(method), m_Y(Y) 
-                          { m_reconst_fcts = find_obs_inc(Y); meanRows(); covMatrix();}
+                          { m_reconst_fcts = find_obs_inc(Y); meanRows(); covMatrix();//something if provided matrix has last rows all NA
+                          }
 
         // specialize
         virtual ~ReconstructionBase() = default; // polymorphism => need virtual destructor
@@ -19,6 +20,7 @@ class ReconstructionBase {
         // same for all derived
         std::vector<int> find_obs_inc(const NumericMatrix&) const; //farne una free function?
         IntegerVector reconst_fcts() const;//getter
+        size_t m_length_reconst_fcts = 0; 
         const NumericVector& meanRows(); //farne una free function?mettere return type NumericVector? penso sia meglio!!!
         const NumericMatrix& covMatrix(); //farne una free function?    
         const NumericVector& mean() const { return m_mean; } //beware wrap() copies the object -> heavy when data is big
@@ -65,6 +67,13 @@ class ReconstructionKL : public ReconstructionBase{//capisci se K era un double 
         void myfpca(std::vector<std::vector<double>>&, const std::vector<std::vector<double>>&, 
                     bool, bool, Nullable<int>, bool);
     private: 
+        Environment mgcv = Environment::namespace_env("mgcv"); 
+        Function gam = mgcv["gam"];
+        Function predict_gam = mgcv["predict.gam"];
+        Environment stats = Environment::namespace_env("stats");
+        Function predict = stats["predict"];
+        Function spline = stats["spline"];
+        Function smooth_spline = stats["smooth.spline"];
         std::pair<std::vector<double>, NumericMatrix> m_Y_preprocessed;
         std::vector<std::vector<double>> m_observed_period;
         arma::mat m_cov_est;
@@ -80,7 +89,7 @@ class ReconstructionKL : public ReconstructionBase{//capisci se K era un double 
         std::vector<arma::vec> m_obs_argvalsO;
         std::vector<arma::uvec> m_locO;
         double m_sigma2;        
-
+        double pev = 0.99;
 };
 
 
