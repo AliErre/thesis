@@ -1,8 +1,9 @@
 # wfda: Reconstruction Package
 
 ## Description
+The `wfda` package revolves around the reconstruction and estimation of complex data. Specifically, it can be split in two areas: one for the reconstruction of partially observed curves over a domain (see `ReconstructionBase` class) and the other one for tuning parameters for the estimation of a spatially adaptive estimator in a Function on Function (FoF) regression problem. For this latter task, the evolutionary algorithm for the adaptive smoothing spline estimator (Centofanti et al. 2023) is implemented (see `Genetic` class). 
 
-The `wfda` package provides tools for the reconstruction of partially observed curves. The reconstruction methods are implemented in C++ for efficiency, with a wrapper function provided for easy usage in R.
+The reconstruction methods and the genetic algorithm are implemented in C++ for efficiency (a wrapper function is provided for easy usage in R). This work builds upon the R code in [Teresa Bortolotti's git hub repo](https://github.com/tbortolotti/WFDA.git).
 
 The package includes a `ReconstructionBase` class, from which three other classes are derived: `Kraus`, `KLAl/KLNoAl`, and `Extrapolation`. Each class specializes a `reconstructCurve` method. The user selects the derived class by providing a string identifier to a factory function, together with a matrix containing the observed curves. The possible values for the string identifier are:
 
