@@ -104,4 +104,21 @@ reconst_e <- extrapolationo$Y_reconst
 kr <- reconstruct_wrapper("Kraus", curves)
 kl <- reconstruct_wrapper("KLAl", Y = curves, t.points = t.points)
 ex <- reconstruct_wrapper("Extrapolation", Y = curves, t.points = t.points)
+
+## load genetic module
+genetic_module <- Module("Genetic", PACKAGE = "wfda")
+genetic <- genetic_module$Genetic
+object_genetic <- new(genetic, xlist.full , blist.default, curves.full, curves.fd, t.points, event.id) #mettere xlist
+object_genetic$multistart()
+
+#get results with getters
+P.full  <- list()
+v.full  <- list()
+blist.full  <- list()
+for(k in 1:5){
+  P.full[[k]]= object_genetic$get_P(k)
+  v.full[[k]]= object_genetic$get_v(k)
+  blist.full[[k]]=object_genetic$get_blist(k)
+}
+
 ```
