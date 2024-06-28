@@ -48,7 +48,7 @@ Since the `wfda` package uses Rcpp extensively, you need to ensure you have Rcpp
 
 ### Building and Installing the Package
 
-3. Once you've cloned the repository and set up Rcpp, open an Rstudio session and navigate to the `wfda` directory.
+Once you've cloned the repository and set up Rcpp, open an Rstudio session and navigate to the `wfda` directory.
 
 After you clone the repository and have a compiler (which Rtools provides), you can do the following:
 ```R
