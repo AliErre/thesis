@@ -66,6 +66,8 @@ class ReconstructionKL : public ReconstructionBase{//capisci se K era un double 
         //Ly, Lu, reconst_fcts,CEscores, center, maxBins 
         void myfpca(std::vector<std::vector<double>>&, const std::vector<std::vector<double>>&, 
                     bool, bool, Nullable<int>, bool);
+        std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix& Y_tilde,const NumericVector& Y_first,
+                         int d, int i, int nbasis);
     private: 
         Environment mgcv = Environment::namespace_env("mgcv"); 
         Function gam = mgcv["gam"];

@@ -241,6 +241,102 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
 
 }
 
+std::pair<NumericMatrix,NumericVector> ReconstructionKL::smooth_cov(const NumericMatrix& Y_tilde,const NumericVector& Y_first,
+                         int d, int i, int nbasis)
+{
+  NumericMatrix cov_mean(d, d);
+  NumericMatrix cov_count(d,d);
+  cov_count.fill(0.0);
+  NumericMatrix cov_sum(d,d);
+  cov_sum.fill(0.0);
+
+
+  // Ccov.mean
+  for (int idx = 0; idx < i; ++idx) {
+
+    IntegerVector obs_points = seq_len(d) - 1;//0 based index
+    obs_points = obs_points[!is_na((m_Y_preprocessed.second)(idx, _))];
+
+    for(int i = 0; i < obs_points.size(); ++i) {
+        for(int j = 0; j < obs_points.size(); ++j) {
+            cov_count(obs_points[i], obs_points[j]) += 1;
+        }
+    }
+
+
+    for(int i = 0; i < obs_points.size(); ++i)
+    {
+      for(int j = 0; j < obs_points.size(); ++j)
+        cov_sum(obs_points[i],obs_points[j])  +=  Y_tilde(idx, obs_points[i]) * Y_tilde(idx, obs_points[j]);
+    }
+  }
+
+  // G.0
+  NumericMatrix G0(d, d);
+  for (int row = 0; row < d; ++row) {
+    for (int col = 0; col < d; ++col) {
+      if (cov_count(row, col) == 0) {
+          G0(row, col) = NA_REAL;
+      }else {
+          G0(row, col) = cov_sum(row, col) / cov_count(row, col);
+      }
+    }
+  }
+
+  NumericVector diag_G0(d);
+  for (int i = 0; i < d; ++i) {
+    diag_G0[i] = G0(i, i);
+  }
+
+  for (int i = 0; i < d; ++i) {
+    G0(i, i) = NA_REAL;
+  }
+
+
+  // npc.0
+  NumericVector row_vec(d * Y_first.size());
+  int index = 0;
+  for(const auto& y : Y_first) {
+    for(int j = 0; j < d; ++j) {
+      row_vec[index++] = y;
+    }
+  }
+
+  NumericVector col_vec(Y_first.size() * d);
+  for(int i = 0; i < d; ++i) {
+    std::copy(Y_first.begin(), Y_first.end(), col_vec.begin() + i * Y_first.size());
+  }
+
+  /*Environment mgcv = Environment::namespace_env("mgcv");
+  Function gam = mgcv["gam"];
+  Function predict_gam = mgcv["predict.gam"];*/
+  NumericVector g0(G0.begin(),G0.end());
+  NumericVector weights(cov_count.begin(),cov_count.end());
+  
+  std::string formula = "G0 ~ te(row_vec, col_vec, k = " + std::to_string(nbasis) + ")";
+  Formula f = Formula(formula);
+  DataFrame data = DataFrame::create(_["G0"] = g0, _["row_vec"] = row_vec, _["col_vec"] = col_vec);
+  List gamModel = gam(_["formula"] = f, _["data"] = data, _["weights"] = weights);//fit gam model
+  DataFrame newdata = DataFrame::create(Named("row_vec") = row_vec, Named("col_vec") = col_vec);//data for prediction
+
+  NumericVector predictions = predict_gam(gamModel, _["newdata"] = newdata);
+  //reshape predictions vector into matrix
+  NumericMatrix npc0(d, d);
+  std::copy(predictions.begin(), predictions.end(), npc0.begin());
+  NumericMatrix npc0_sym(d, d);
+
+  // symmetrization
+  for (int i = 0; i < d; ++i) {
+    for (int j = i; j < d; ++j) {
+          {
+            npc0_sym(i, j) = (npc0(i, j) + npc0(j, i)) / 2.0;
+            npc0_sym(j,i) = npc0_sym(i,j);
+          }
+    }
+  }
+
+  return std::make_pair(npc0_sym,diag_G0);
+}
 
 void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::vector<std::vector<double>>& Lu, 
                                 bool scores = false, bool center = true, Nullable<int> max_bins_nullable = R_NilValue, bool all = false){
@@ -320,15 +416,12 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
   id.shrink_to_fit();
 
   NumericMatrix Y_tilde(clone(m_Y_preprocessed.second)); //cercare se da altre parti avrei dovuto usare clone per la shallow copy
-  NumericVector yfirst = wrap(m_Y_preprocessed.first);   //t_points
+  NumericVector yfirst((m_Y_preprocessed.first).begin(), (m_Y_preprocessed.first).end());   //t_points
   NumericVector mu;
   if(center)
   {
     NumericMatrix Y_mat = m_Y_preprocessed.second;
     NumericVector vec(Y_mat.begin(), Y_mat.end());
-    //Environment mgcv = Environment::namespace_env("mgcv");    
-    //Function gam = mgcv["gam"];
-    //Function predict_gam = mgcv["predict.gam"];
 
     NumericVector dvec(d_vec.begin(), d_vec.end());
 
@@ -353,7 +446,7 @@ void ReconstructionKL::myfpca(std::vector<std::vector<double>>& Ly, const std::v
   m_mu = mu;//giusto
   //problema principale -> t_points è Y.first. potrei non usare Y.first
   //cov
-  std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(m_Y_preprocessed.second, Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
+  std::pair<NumericMatrix, NumericVector> cov_smooth = smooth_cov(Y_tilde, yfirst, d, i, nbasis);//if(!useSymm), perchè setta useSymm = FALSE
   NumericMatrix npc0 = cov_smooth.first; //giusto
   NumericVector diagG0 = cov_smooth.second; //giusto
 

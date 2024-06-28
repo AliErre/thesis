@@ -12,8 +12,8 @@ reconstKL_fun(const NumericVector&, const std::vector<double>&, const arma::uvec
 std::pair<std::vector<double>,NumericMatrix> irreg2mat(const std::vector<std::tuple<int, double, double>>&, 
                                                        bool binning, int max_bins);
 
-std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix&,const NumericMatrix&,const NumericVector&,
-                                                  int, int, int);
+/*std::pair<NumericMatrix,NumericVector> smooth_cov(const NumericMatrix&,const NumericMatrix&,const NumericVector&,
+                                                  int, int, int);*/
 
 std::vector<double> quadWeights(const std::vector<double>&, const std::string& method = "trapezoidal");
 
