@@ -157,10 +157,11 @@ double weighted_mean(const std::vector<double>& v, const std::vector<double>& w)
   double sum = 0.0;
   double sum_w = 0.0;
   #pragma omp parallel for reduction(+:sum, sum_w)
-    for (size_t i = 0; i < v.size(); ++i) {
-        sum += v[i] * w[i];
-        sum_w += w[i];//this does not necessarily sum to 1 ?
-    }
+  for(size_t i = 0; i < v.size(); ++i)
+  {
+    sum += v[i]*w[i];
+    sum_w += w[i];//this does not necessarily sum to 1 ?
+  }
   return sum/sum_w; 
 }
 
@@ -331,24 +332,17 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
     }
 
     arma::mat efunctionsO_i_sub = efunctionsO_i.rows(obs_locO);
-   #pragma omp parallel for
-    for(arma::uword j = 0; j < efunctionsO_i_sub.n_cols; ++j)
-     {
-    arma::vec column = efunctionsO_i_sub.col(j);
-    double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);
-    
-    // Usa una sezione critica per sommare in modo sicuro
-    #pragma omp critical
+    for(arma::uword j = 0; j < efunctionsO_i_sub.n_cols;++j)
     {
-        scoresO[i] += integral;
-    } 
+      arma::vec column = efunctionsO_i_sub.col(j);
+      double integral = trapezioidal_rule(column % Y_cent_arma(no_na), obs_argvalsO_i);
+      scoresO[i] = integral;
     }
 
     //reconstructive eigenfunctions
     NumericMatrix efun_reconst_i(argvals.size(), npcO + 1*(!size));//giusto
     efun_reconst_i.fill(NA_REAL);     
     arma::mat rows = cov_est.rows(locO);
-    #pragma omp parallel for 
     for(int k = 0; k < efun_reconst_i.ncol(); ++k)
     {
       for(int r = 0; r < efun_reconst_i.nrow(); ++r){
@@ -357,7 +351,6 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
           efun_reconst_i(r,k) = integral/evaluesO_i[k];
       }
     }
-    
     
     efun_reconst[i] = efun_reconst_i;
     
@@ -410,7 +403,6 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   locM.shrink_to_fit();
 
   NumericMatrix Y_pred(clone(Y_c));
-  #pragma omp parallel for collapse(2)
   for(int i = 0; i < Y_pred.nrow(); ++i)
   {
     for(auto& col: locM)
@@ -458,7 +450,6 @@ int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, 
   NumericMatrix efun_reconst_i(argvals.size(), npcO + 1);//+1 perchè era un indice
   efun_reconst_i.fill(NA_REAL);    
   arma::mat rows = cov_est.rows(locO);
-  # pragma omp parallel for
   for(int k = 0; k < efun_reconst_i.ncol(); ++k)
   {
     for(int r = 0; r < efun_reconst_i.nrow(); ++r){

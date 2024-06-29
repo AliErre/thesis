@@ -12,7 +12,6 @@
 #include "helper_functions.h"
 #include <omp.h>
 
-
 //destructor per gcv?
 //oppure ritorna un pair<vettore di classi, matrice Y>, vettore di classi sarrebbe colname ed è lower bound di classes
 
@@ -48,14 +47,13 @@ const NumericVector& ReconstructionBase::meanRows() {
 
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
-  m_mean = NumericVector(nRows);//vedi se lasciarlo o no
-  #pragma omp parallel for if(nRows > 20)    //parallel solo se se suffic dimension
+  m_mean = NumericVector(nRows);
+  #pragma omp parallel for if(nRows>20)
     for (int i = 0; i < nRows; ++i) {
         double sum = 0;
         int naCount = 0;
 
         NumericVector row = m_Y(i, _); //::ConstRow gives constant reference to the current row
-        // Iterate over the elements of the row
         for (auto it = row.begin(); it != row.end(); ++it) {
             if (NumericVector::is_na(*it)) {
                 naCount++;
@@ -64,20 +62,17 @@ const NumericVector& ReconstructionBase::meanRows() {
             }
         }
         m_mean[i] = sum / (nCols - naCount);
-        /*m_mean[i] = naCount < nCols ? sum / (nCols - naCount) : NA_REAL; 
-        //in realtà non dovrebbe mai capitare di avere degli NA
-        //ci dovrebbe essere sempre almeno una curva completa*/
     }
 
-    return m_mean;//retunr a reference to the data member
+    return m_mean;
 }
 
 const NumericMatrix& ReconstructionBase::covMatrix(){
-  //if(m_mean.length() == 0){meanRows();} not necessary
+
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
-  NumericMatrix X_cent_mat(nRows, nCols);//fixed dimensions 
-  #pragma omp parallel for collapse(2)
+  NumericMatrix X_cent_mat(nRows, nCols); 
+#pragma omp parallel for collapse(2)
     for (int i = 0; i < nRows; ++i) {
         for (int j = 0; j < nCols; ++j) {
             X_cent_mat(i, j) = NumericVector::is_na(m_Y(i, j)) ? NA_REAL : (m_Y(i, j) - m_mean[i]);
@@ -90,7 +85,6 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
         for (int t = s; t < nRows; ++t) {
             double sum = 0.0;
             int count = 0;
-
             #pragma omp parallel for reduction(+:sum, count)
             for (int k = 0; k < nCols; ++k) {
                 if (!NumericVector::is_na(X_cent_mat(s, k)) && !NumericVector::is_na(X_cent_mat(t, k))) {
@@ -102,7 +96,7 @@ const NumericMatrix& ReconstructionBase::covMatrix(){
             double covValue = sum/count;
             m_cov(s, t) = covValue;
             m_cov(t, s) = covValue; //symmetric
-        }     
+        }
     }
     
   return m_cov;
@@ -181,6 +175,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
     df_vec[column] = std::get<1>(resultKraus);
     arma::uvec M_bool_arma = std::get<4>(resultKraus);
     arma::vec hi = std::get<3>(resultKraus);
+    #pragma omp parallel for
     for(const auto& m:M_bool_arma)
     {
       W_reconst_mat(m, column) = 1 - hi[m - (r - hi.size())];
@@ -246,9 +241,8 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
       {
         Y_reconstruct(na, index) = val;
       }
-    }
-  }
-
+      }
+ }
   return List::create(_["Y_reconst"] = wrap(Y_reconstruct),
                       _["mean_slopes"] = wrap(mean_slope));
 
@@ -263,18 +257,19 @@ std::pair<NumericMatrix,NumericVector> ReconstructionKL::smooth_cov(const Numeri
   NumericMatrix cov_sum(d,d);
   cov_sum.fill(0.0);
 
+
   // Ccov.mean
   for (int idx = 0; idx < i; ++idx) {
 
-    IntegerVector obs_points = seq_len(d) - 1;  //obs_points [ !is_na (Y_second(idx,1))];
+    IntegerVector obs_points = seq_len(d) - 1;//0 based index
+    obs_points = obs_points[!is_na((m_Y_preprocessed.second)(idx, _))];
     #pragma omp parallel for collapse(2)
     for(int i = 0; i < obs_points.size(); ++i) {
         for(int j = 0; j < obs_points.size(); ++j) {
             cov_count(obs_points[i], obs_points[j]) += 1;
             cov_sum(obs_points[i],obs_points[j])  +=  Y_tilde(idx, obs_points[i]) * Y_tilde(idx, obs_points[j]);
-        }        // non so se ha senso cosi o se se si puo rimuovere atomic
+        }
     }
-
   }
 
   // G.0
@@ -298,6 +293,7 @@ std::pair<NumericMatrix,NumericVector> ReconstructionKL::smooth_cov(const Numeri
   for (int i = 0; i < d; ++i) {
     G0(i, i) = NA_REAL;
   }
+
 
   // npc.0
   NumericVector row_vec(d * Y_first.size());
