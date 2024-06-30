@@ -1,13 +1,14 @@
 #include "gcv.h" 
 double gcv::value(double x){//gcvKrausFun
     int n = m_YY.ncol();//X_Compl_mat
+    int bl = m_M_bool.length();
     NumericVector rss = NumericVector(n);
     double df = 0.0;
     for(int j=0; j < n ; ++j){
         //maschera valori in m_YY(_,j)
         NumericVector original(sum(m_M_bool));
         int index = 0;
-        for(int r = 0;r < m_M_bool.length() ;++r){
+        for(int r = 0;r < bl ;++r){
             if(m_M_bool[r]) 
             {
                 original[index++] = m_YY(r,j);
@@ -17,7 +18,7 @@ double gcv::value(double x){//gcvKrausFun
         std::tuple<NumericVector, double, double, arma::vec, arma::uvec> result = reconstKraus_fun(m_YY, m_mean_gcv, m_cov_gcv, j, x);//x = alpha
         //reset
         index = 0;
-        for(int r = 0;r < m_M_bool.length() ;++r){
+        for(int r = 0;r < bl ;++r){
             if(m_M_bool[r]) 
             {
                 m_YY(r,j) = original[index++];
@@ -32,6 +33,6 @@ double gcv::value(double x){//gcvKrausFun
         if(j == n-1)
             {df = std::get<1>(result);}
     }
-    double gcv = sum(rss)/(std::pow(1-df/n,2)); // std::pow() non è efficiente, farlo io
-    return gcv;
+    double gcv = sum(rss)/((1 - df / n) * (1 - df / n)); // std::pow() non è efficiente, farlo io
+   return gcv;
 }
