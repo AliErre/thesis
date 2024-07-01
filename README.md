@@ -15,57 +15,24 @@ The package includes a `ReconstructionBase` class, from which three other classe
 The vector t_points must be provided non `NULL` to every method except "Kraus" which does not require it.
 Since variadic templating is not possible within `Rcpp` the `reconstructCurve` method has the same number of arguments for every method; moreover the only way to have default values for arguments is to create an R wrapper function. The latter is located in the R directory and wraps `reconstructCurve` so that the calls look more intuitive and every method call only needs to make explicit only the arguments it requires.
 
-
-
-## Installation
-### In case the repo is public
-This is valid only for when the repo will be made public.
-
-You can install the package directly from GitHub using the `devtools` package:
-
-```R
-# Install devtools package if not already installed
-if (!requireNamespace("devtools", quietly = TRUE)) {
-  install.packages("devtools")
-}
-
-# Install the wfda package from GitHub
-devtools::install_github("AliErre/thesis@alice/wfda")
-```
-
-### In case you have access to the package files: set up Rcpp
-Since the `wfda` package uses Rcpp extensively, you need to ensure you have Rcpp installed and a compatible compiler set up. Here's how to prepare:
-
-- **Install Rtools**:
-  Rtools provides the necessary tools, including the C/C++ compiler, to build R packages with C++ code. You can download and install Rtools from the official website: [Rtools Download Page](https://cran.r-project.org/bin/windows/Rtools/).
-
-- **Set Up PATH Environment Variable**:
-  After installing Rtools, you need to add its bin directory to your PATH environment variable. This allows your system to locate the Rtools compiler when building packages. Here's how to do it on Windows:
-  - Search for "Environment Variables" in your computer's search bar and open the "Edit the system environment variables" option.
-  - Click on the "Environment Variables" button.
-  - In the "System variables" section, find the "Path" variable and click "Edit".
-  - Add the path to the Rtools bin directory (e.g., `C:\Rtools\bin`) to the list of paths. Make sure to separate it from other paths with a semicolon (`;`).
-
-### Building and Installing the Package
-
-Once you've cloned the repository and set up Rcpp, open an Rstudio session and navigate to the `wfda` directory.
-
-After you clone the repository and have a compiler (which Rtools provides), you can do the following:
+### Install from source
+Download wfda_1.0.tar.gz, and all the .RData.
+On R, you can do the following (navigate to the working directory where the source is located):
 ```R
 if (!requireNamespace("devtools", quietly = TRUE)) {
   install.packages("devtools")
 }
 install.packages("Rcpp")
+library(Rcpp)
 
-setwd("path_to_your_local_repo")
+setwd("path_to_wfda_1.0.tar.gz")
 Rcpp::compileAttributes()
 devtools::build()
 # devtools::check()
-install.packages("../wfda_1.0.tar.gz")
+install.packages("./wfda_1.0.tar.gz")
 ```
 ## Usage
 ```R
-library(Rcpp)
 library(wfda)
 load("curves.Rdata")
 load("t_points.Rdata")
