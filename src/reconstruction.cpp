@@ -237,10 +237,7 @@ List ReconstructionExtrapolation::reconstructCurve(Nullable<double> alpha = R_Ni
     //reconstruct with equation of a straight line
     for (const auto& na : id_na) {
       double val= last_observed_value + last_slope * (periods(na) - last_observed_period);
-      #pragma omp critical
-      {
-        Y_reconstruct(na, index) = val;
-      }
+      Y_reconstruct(na, index) = val;
       }
  }
   return List::create(_["Y_reconst"] = wrap(Y_reconstruct),
@@ -523,7 +520,6 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
   //created Y_list and U_list 
   //myfpca setta dei data member. reonstructCurve() non può essere const
   myfpca(Y_list, U_list, false, true, maxBins, all);//all = false vuol dire che non deve ricostruire tutto
-
   m_length_reconst_fcts = reconst_fcts.size();
   std::vector<double> K_vec;
   K_vec.reserve(m_length_reconst_fcts);
@@ -564,7 +560,7 @@ List ReconstructionKL::reconstructCurve(Nullable<double> alpha = R_NilValue, boo
     Y_reconstr_list[i] = result.first;
     W_reconst_list[i] = result.second;
     U_reconst_list[i] = x;
-  }
+  } 
   if(nRegGrid_nullable.isNotNull())
   {
     int nRegGrid = as<int>(nRegGrid_nullable);

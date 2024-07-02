@@ -3,7 +3,6 @@
 #include "sample.h"
 
 std::pair<arma::vec, arma::vec> Genetic::pwmse(List& blist)//toglierla dai member e aggiungere parametri
-//aggiunge pezzi di codice per farla generalizzare
 {   //non credo di volerla togliere dai method perchè così può prendersi le funzioni messe come data member
    // size_t n = m_curves.n_cols;
     size_t N = m_curves.n_rows;

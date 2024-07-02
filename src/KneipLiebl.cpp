@@ -156,7 +156,7 @@ double weighted_mean(const std::vector<double>& v, const std::vector<double>& w)
     stop("vector of weights must be the same size as of input vector");
   double sum = 0.0;
   double sum_w = 0.0;
-  #pragma omp parallel for reduction(+:sum, sum_w)
+  // #pragma omp parallel for reduction(+:sum, sum_w)
   for(size_t i = 0; i < v.size(); ++i)
   {
     sum += v[i]*w[i];
@@ -370,8 +370,6 @@ std::tuple<std::vector<arma::vec>, std::vector<double>, List, arma::mat, std::ve
 }
 
 
-
-//per ora ritorna un int ma forse K è double, controlla
 int gcvKneipLiebl(const NumericVector& mu, const std::pair<std::vector<double>, NumericMatrix>& Y_preprocessed, 
                   const std::vector<double>& argvalsO_i, const arma::uvec& locO,
                   const arma::mat& cov_est, double sigma2, const std::string& method, double pev)
