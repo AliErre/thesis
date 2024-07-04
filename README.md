@@ -26,8 +26,8 @@ install.packages("Rcpp")
 library(Rcpp)
 
 setwd("path_to_wfda_1.0.tar.gz")
-Rcpp::compileAttributes()
-devtools::build()
+# Rcpp::compileAttributes()
+# devtools::build()
 # devtools::check()
 install.packages("./wfda_1.0.tar.gz")
 ```
