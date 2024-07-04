@@ -10,6 +10,7 @@
 #include "gcv.h"
 #include "KneipLiebl.h"
 #include "helper_functions.h"
+#include <omp.h>
 
 //destructor per gcv?
 //oppure ritorna un pair<vettore di classi, matrice Y>, vettore di classi sarrebbe colname ed è lower bound di classes
@@ -47,11 +48,12 @@ const NumericVector& ReconstructionBase::meanRows() {
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
   m_mean = NumericVector(nRows);
+  #pragma omp parallel for if(nRows > 20)    
     for (int i = 0; i < nRows; ++i) {
         double sum = 0;
         int naCount = 0;
 
-        NumericVector row = m_Y(i, _); //::ConstRow gives constant reference to the current row
+        NumericVector row = m_Y(i, _); 
         for (auto it = row.begin(); it != row.end(); ++it) {
             if (NumericVector::is_na(*it)) {
                 naCount++;
@@ -66,38 +68,40 @@ const NumericVector& ReconstructionBase::meanRows() {
 }
 
 const NumericMatrix& ReconstructionBase::covMatrix(){
-
+  //if(m_mean.length() == 0){meanRows();} not necessary
   int nRows = m_Y.nrow();
   int nCols = m_Y.ncol();
   NumericMatrix X_cent_mat(nRows, nCols); 
-
+  #pragma omp parallel for collapse(2)
     for (int i = 0; i < nRows; ++i) {
         for (int j = 0; j < nCols; ++j) {
-            X_cent_mat(i, j) = NumericVector::is_na(m_Y(i, j)) ? NA_REAL : (m_Y(i, j) - m_mean[i]);
+            X_cent_mat(i, j) = NumericVector::is_na(m_Y(i, j)) ? 
+                             NA_REAL : (m_Y(i, j) - m_mean[i]);
         }
     }
     
-    //account for NAs
     m_cov = NumericMatrix(nRows, nRows);
     for (int s = 0; s < nRows; ++s) {
-        for (int t = s; t < nRows; ++t) {
-            double sum = 0.0;
-            int count = 0;
-            for (int k = 0; k < nCols; ++k) {
-                if (!NumericVector::is_na(X_cent_mat(s, k)) && !NumericVector::is_na(X_cent_mat(t, k))) {
-                    sum += X_cent_mat(s, k) * X_cent_mat(t, k);
-                    ++count;
-                }
+      for (int t = s; t < nRows; ++t) {
+        double sum = 0.0;
+        int count = 0;
+
+        #pragma omp parallel for reduction(+:sum, count)
+        for (int k = 0; k < nCols; ++k) {
+          if (!NumericVector::is_na(X_cent_mat(s, k)) && !NumericVector::is_na(X_cent_mat(t, k))) {
+             sum += X_cent_mat(s, k) * X_cent_mat(t, k);
+              ++count;
             }
-            //double covValue = count > 0 ? sum / count : NA_REAL; commented out perchè penso che non possa mai capitare di avere NA nella cov_mat
-            double covValue = sum/count;
-            m_cov(s, t) = covValue;
-            m_cov(t, s) = covValue; //symmetric
-        }
+          }   
+        double covValue = sum/count;
+        m_cov(s, t) = covValue;
+        m_cov(t, s) = covValue; //symmetric
+        }     
     }
     
   return m_cov;
 }
+
 
 
 List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_NilValue, bool all = FALSE, const Nullable<NumericVector>& t_points = R_NilValue, Nullable<int> K = R_NilValue, Nullable<int> maxBins = R_NilValue, Nullable<int> nRegGrid = R_NilValue) {
