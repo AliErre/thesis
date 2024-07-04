@@ -123,7 +123,7 @@ List ReconstructionKraus::reconstructCurve(Nullable<double> alpha_nullable = R_N
     X_reconst_mat(_,column++) = m_Y(_,index);
   }
 
-  NumericMatrix W_reconst_mat(r,reconst_fcts.length());//initialized with 0s
+  NumericMatrix W_reconst_mat(r,m_length_reconst_fcts);//initialized with 0s
   std::fill(W_reconst_mat.begin(),W_reconst_mat.end(),1);//thanks to how NumericMatrix stored in memory
 
   std::vector<size_t> nonNA_fcts; //mask in R

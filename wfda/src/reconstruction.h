@@ -20,7 +20,7 @@ class ReconstructionBase {
         // same for all derived
         std::vector<int> find_obs_inc(const NumericMatrix&) const; //farne una free function?
         IntegerVector reconst_fcts() const;//getter
-        size_t m_length_reconst_fcts = 0; 
+        
         const NumericVector& meanRows(); //farne una free function?mettere return type NumericVector? penso sia meglio!!!
         const NumericMatrix& covMatrix(); //farne una free function?    
         const NumericVector& mean() const { return m_mean; } //beware wrap() copies the object -> heavy when data is big
@@ -32,6 +32,7 @@ class ReconstructionBase {
         std::string m_method;
         NumericMatrix m_Y; // curves.train in R
         std::vector<int> m_reconst_fcts; //vector of indices of curves to reconstruct 
+        size_t m_length_reconst_fcts = 0; 
         NumericVector m_mean; //capire se mettere return type NumericVector
         NumericMatrix m_cov; //return type NumericMatrix cause it can contain NA
 };

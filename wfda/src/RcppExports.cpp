@@ -59,6 +59,7 @@ BEGIN_RCPP
 END_RCPP
 }
 
+RcppExport SEXP _rcpp_module_boot_Genetic();
 RcppExport SEXP _rcpp_module_boot_reconstruction();
 
 static const R_CallMethodDef CallEntries[] = {
@@ -66,6 +67,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_wfda_try_list", (DL_FUNC) &_wfda_try_list, 1},
     {"_wfda_test_fda", (DL_FUNC) &_wfda_test_fda, 4},
     {"_wfda_sum_cpp", (DL_FUNC) &_wfda_sum_cpp, 1},
+    {"_rcpp_module_boot_Genetic", (DL_FUNC) &_rcpp_module_boot_Genetic, 0},
     {"_rcpp_module_boot_reconstruction", (DL_FUNC) &_rcpp_module_boot_reconstruction, 0},
     {NULL, NULL, 0}
 };
