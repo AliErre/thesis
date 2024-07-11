@@ -5,7 +5,7 @@ The `wfda` package revolves around the reconstruction and estimation of complex 
 
 The reconstruction methods and the genetic algorithm are implemented in C++ for efficiency (a wrapper function is provided for easy usage in R). This work builds upon the R code in [Teresa Bortolotti's git hub repo](https://github.com/tbortolotti/WFDA.git).
 
-The package includes a `ReconstructionBase` class, from which three other classes are derived: `Kraus`, `KLAl/KLNoAl`, and `Extrapolation`. Each class specializes a `reconstructCurve` method. The user selects the derived class by providing a string identifier to a factory function, together with a matrix containing the observed curves. The possible values for the string identifier are:
+The package also includes a `ReconstructionBase` class, from which three other classes are derived: `Kraus`, `KLAl/KLNoAl`, and `Extrapolation`. Each class specializes a `reconstructCurve` method. The user selects the derived class by providing a string identifier to a factory function, together with a matrix containing the observed curves. The possible values for the string identifier are:
 
 - "Kraus": if `alpha` is `NULL` then it is set through gcv using the complete curves observations.
 - "KLAl": if `K` is `NULL` then it is set through gcv using the complete curves observations.
@@ -26,8 +26,8 @@ install.packages("Rcpp")
 library(Rcpp)
 
 setwd("path_to_wfda_1.0.tar.gz")
-Rcpp::compileAttributes()
-devtools::build()
+# Rcpp::compileAttributes()
+# devtools::build()
 # devtools::check()
 install.packages("./wfda_1.0.tar.gz")
 ```
@@ -36,6 +36,11 @@ install.packages("./wfda_1.0.tar.gz")
 library(wfda)
 load("curves.Rdata")
 load("t_points.Rdata")
+load("xlist.RData")
+load("blist.RData")
+load("curvesfull.RData")
+load("curvesfd.RData")
+load("eventid.RData")
 
 # expose ReconstructionBase class
 reconstruction <- Module("reconstruction", PACKAGE = "wfda")
