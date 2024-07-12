@@ -52,6 +52,8 @@ klal <- new(ReconstructionBase, "KLAl", matrix_data)
 klnoal <- new(ReconstructionBase, "KLNoAl", matrix_data)
 kraus <- new(ReconstructionBase, "Kraus", matrix_data)
 extrapolationo <- new(ReconstructionBase, "Extrapolation", matrix_data)
+reconst_indices = extrapolationo$reconst_fcts() #indices of the curves to reconstruct
+#you can call $reconst_fcts() on any ReconstructionBase object
 
 # call reconstruct method. Arguments: alpha, all, t_points, K, maxBins, nRegGrid
 klal <- klal$reconstruct(NULL, FALSE, t.points, NULL, NULL, NULL)
