@@ -33,14 +33,15 @@ install.packages("./wfda_1.0.tar.gz")
 ```
 ## Usage
 ```R
+library(Rcpp)
 library(wfda)
-load("curves.Rdata")
-load("t_points.Rdata")
-load("xlist.RData")
-load("blist.RData")
-load("curvesfull.RData")
-load("curvesfd.RData")
-load("eventid.RData")
+load("curves.RData")
+load("t_points.RData")
+load("xlist.Rdata")
+load("blist.Rdata")
+load("curvesfull.Rdata")
+load("curvesfd.Rdata")
+load("eventid.Rdata")
 
 # expose ReconstructionBase class
 reconstruction <- Module("reconstruction", PACKAGE = "wfda")
